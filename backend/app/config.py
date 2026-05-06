@@ -17,6 +17,15 @@ class Settings(BaseSettings):
     frontend_url: str = Field(default="http://localhost:5173")
     environment: Literal["development", "production", "test"] = Field(default="development")
 
+    @property
+    def cors_origins(self) -> list[str]:
+        """Comma-separated FRONTEND_URL → list of allowed origins.
+
+        Lets you set FRONTEND_URL=https://app.vercel.app,https://app-preview.vercel.app
+        on Render to support preview deployments.
+        """
+        return [o.strip().rstrip("/") for o in self.frontend_url.split(",") if o.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:
