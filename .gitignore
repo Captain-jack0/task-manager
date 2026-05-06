@@ -4,6 +4,7 @@ dist/
 .vite/
 coverage/
 *.local
+*.tsbuildinfo
 
 # Python
 __pycache__/
