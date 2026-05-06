@@ -6,10 +6,12 @@ The schema is dropped and recreated for the session.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncGenerator
+from urllib.parse import urlparse
 
-import pytest
+import asyncpg
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
@@ -31,11 +33,39 @@ from app.api.deps import get_db  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.main import create_app  # noqa: E402
 
+def _ensure_test_database() -> None:
+    """Create the test database if it does not yet exist (idempotent)."""
+    parsed = urlparse(TEST_DB_URL.replace("postgresql+asyncpg://", "postgresql://"))
+    db_name = (parsed.path or "/").lstrip("/")
+    if not db_name:
+        return
+
+    async def _create() -> None:
+        conn = await asyncpg.connect(
+            user=parsed.username,
+            password=parsed.password,
+            host=parsed.hostname,
+            port=parsed.port or 5432,
+            database="postgres",
+        )
+        try:
+            exists = await conn.fetchval(
+                "SELECT 1 FROM pg_database WHERE datname = $1", db_name
+            )
+            if not exists:
+                await conn.execute(f'CREATE DATABASE "{db_name}"')
+        finally:
+            await conn.close()
+
+    asyncio.run(_create())
+
+
+_ensure_test_database()
 _engine = create_async_engine(TEST_DB_URL, echo=False, future=True)
 _TestSession = async_sessionmaker(_engine, expire_on_commit=False, class_=AsyncSession)
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
 async def _setup_db() -> AsyncGenerator[None, None]:
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -46,19 +76,22 @@ async def _setup_db() -> AsyncGenerator[None, None]:
     await _engine.dispose()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def session() -> AsyncGenerator[AsyncSession, None]:
     async with _TestSession() as s:
         try:
             yield s
         finally:
-            # Clean tables between tests to keep isolation.
-            for table in reversed(Base.metadata.sorted_tables):
-                await s.execute(table.delete())
-            await s.commit()
+            # The session may be in a failed transaction state after an
+            # IntegrityError; rollback first, then truncate via a fresh
+            # connection so each test starts from a clean slate.
+            await s.rollback()
+            async with _engine.begin() as conn:
+                for table in reversed(Base.metadata.sorted_tables):
+                    await conn.execute(table.delete())
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     app = create_app()
 
@@ -72,7 +105,7 @@ async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides.clear()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def auth_headers(client: AsyncClient) -> dict[str, str]:
     resp = await client.post(
         "/auth/register",
@@ -83,7 +116,7 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def second_auth_headers(client: AsyncClient) -> dict[str, str]:
     resp = await client.post(
         "/auth/register",
