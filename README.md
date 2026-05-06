@@ -82,21 +82,44 @@ Coverage target: **≥ 80%** on both sides.
 
 ## Deployment
 
-### Backend → Fly.io
+### Free path: Render + Neon + Vercel (recommended)
+
+Total cost: **$0/mo, no credit card required**. Trade-off: backend cold-starts after ~15 min of idle.
+
+#### 1. Postgres → Neon (always free, 0.5 GB)
+1. Sign up at https://console.neon.tech (GitHub login).
+2. Create a project, region close to you (e.g. Frankfurt).
+3. Copy the **pooled** connection string. Convert it to async format:
+   - Neon gives: `postgresql://user:pass@ep-xxx.region.aws.neon.tech/db?sslmode=require`
+   - Use as **DATABASE_URL**: `postgresql+asyncpg://user:pass@ep-xxx.region.aws.neon.tech/db?ssl=require`
+   - (Note: prefix `postgresql+asyncpg://` and rename `sslmode=require` → `ssl=require` for asyncpg.)
+
+#### 2. Backend → Render (free web service)
+1. Push the repo to GitHub (already done).
+2. Open https://dashboard.render.com → **New** → **Blueprint**.
+3. Connect the `task-manager` repo. Render reads `render.yaml` and proposes the service.
+4. Set the two manual env vars:
+   - **DATABASE_URL** = the Neon URL from step 1
+   - **FRONTEND_URL** = `https://<your-vercel-app>.vercel.app` (placeholder for now; update after step 3)
+5. Click **Apply**. First build takes 3–5 min. The URL will be `https://task-manager-api.onrender.com`.
+
+#### 3. Frontend → Vercel
+1. https://vercel.com/new → import the GitHub repo.
+2. **Root Directory:** `frontend`
+3. **Environment Variable:** `VITE_API_BASE_URL` = `https://task-manager-api.onrender.com`
+4. Deploy.
+5. Once Vercel gives you the URL, go back to Render dashboard → update `FRONTEND_URL` env var → Render redeploys automatically (CORS).
+
+### Paid alternative: Fly.io (no cold starts, ~$4/mo)
+
 ```bash
 cd backend
-fly launch                              # uses Dockerfile + fly.toml
+fly launch --no-deploy --copy-config
 fly postgres create --name task-manager-db
 fly postgres attach task-manager-db
 fly secrets set JWT_SECRET=<random> FRONTEND_URL=https://<vercel>.vercel.app
 fly deploy
 ```
-
-### Frontend → Vercel
-- Import GitHub repo on Vercel
-- **Root Directory:** `frontend`
-- **Build:** `npm run build`, **Output:** `dist`
-- **Env:** `VITE_API_BASE_URL=https://<fly-app>.fly.dev`
 
 ## License
 

@@ -1,0 +1,32 @@
+# Render.com blueprint
+# Deploy: https://dashboard.render.com/new -> "Blueprint" -> connect this GitHub repo
+# Free tier notes:
+#   - Web service free, but spins down after 15 min idle (cold start ~30s on next request)
+#   - Postgres on Render free tier expires after 90 days; use Neon instead (always free)
+services:
+  - type: web
+    name: task-manager-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "60"
+      - key: JWT_SECRET
+        generateValue: true
+      # Set these manually in the Render dashboard:
+      #   DATABASE_URL  -> from Neon (postgresql+asyncpg://user:pass@host/db?sslmode=require)
+      #   FRONTEND_URL  -> https://<your-app>.vercel.app
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
