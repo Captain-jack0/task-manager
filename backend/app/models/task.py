@@ -44,10 +44,16 @@ class Task(Base, UUIDMixin, TimestampMixin):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[TaskStatus] = mapped_column(
-        SAEnum(TaskStatus, name="task_status"), nullable=False, default=TaskStatus.TODO
+        # values_callable makes SQLAlchemy use the enum .value ("todo") rather
+        # than its .name ("TODO"); the Postgres task_status enum stores the
+        # lowercase values, so without this reads/filters raise
+        # InvalidTextRepresentationError.
+        SAEnum(TaskStatus, name="task_status", values_callable=lambda e: [m.value for m in e]),
+        nullable=False,
+        default=TaskStatus.TODO,
     )
     priority: Mapped[TaskPriority] = mapped_column(
-        SAEnum(TaskPriority, name="task_priority"),
+        SAEnum(TaskPriority, name="task_priority", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=TaskPriority.MEDIUM,
     )

@@ -35,8 +35,6 @@ services:
       ENVIRONMENT: development
     ports:
       - "8000:8000"
-    profiles:
-      - full
 
 volumes:
   postgres_data:
