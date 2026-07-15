@@ -1,5 +1,6 @@
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskEnergy = 'low' | 'medium' | 'high';
 
 export interface User {
   id: string;
@@ -23,6 +24,9 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
+  estimated_minutes: number | null;
+  energy_level: TaskEnergy | null;
+  snooze_count: number;
   tags: Tag[];
   created_at: string;
   updated_at: string;
@@ -47,10 +51,28 @@ export interface TaskCreateInput {
   status?: TaskStatus;
   priority?: TaskPriority;
   due_date?: string | null;
+  estimated_minutes?: number | null;
+  energy_level?: TaskEnergy | null;
   tag_ids?: string[];
 }
 
 export type TaskUpdateInput = Partial<TaskCreateInput>;
+
+export interface TaskSuggestion {
+  task: Task;
+  score: number;
+  reason: string;
+}
+
+export interface SuggestResponse {
+  suggestions: TaskSuggestion[];
+}
+
+export interface SuggestParams {
+  minutes?: number;
+  energy?: TaskEnergy;
+  limit?: number;
+}
 
 export interface TagCreateInput {
   name: string;

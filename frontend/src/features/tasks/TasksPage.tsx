@@ -9,6 +9,7 @@ import type { TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { useTags, useDeleteTag } from '@/features/tags/useTags';
 import { cn } from '@/lib/cn';
+import { SuggestPanel } from './SuggestPanel';
 import { TaskForm } from './TaskForm';
 import { TaskList } from './TaskList';
 import type { TaskFormValues } from './schemas';
@@ -45,6 +46,8 @@ export function TasksPage() {
         status: values.status,
         priority: values.priority,
         due_date: values.due_date ? new Date(values.due_date).toISOString() : null,
+        energy_level: values.energy_level || null,
+        estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
         tag_ids: values.tag_ids,
       },
       {
@@ -82,6 +85,8 @@ export function TasksPage() {
         </div>
         <Button onClick={() => setCreateOpen(true)}>+ New task</Button>
       </div>
+
+      <SuggestPanel />
 
       <div className="grid gap-8 lg:grid-cols-[200px_1fr]">
         <aside className="space-y-6">

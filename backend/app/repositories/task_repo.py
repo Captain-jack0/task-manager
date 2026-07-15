@@ -40,6 +40,16 @@ async def list_tasks(
     return rows, total
 
 
+async def list_active_tasks(
+    session: AsyncSession, *, user_id: UUID
+) -> Sequence[Task]:
+    """All not-done tasks for a user — candidate pool for the suggestion engine."""
+    result = await session.execute(
+        select(Task).where(Task.user_id == user_id, Task.status != TaskStatus.DONE)
+    )
+    return result.scalars().unique().all()
+
+
 async def get_task(session: AsyncSession, *, task_id: UUID, user_id: UUID) -> Task | None:
     result = await session.execute(
         select(Task).where(Task.id == task_id, Task.user_id == user_id)

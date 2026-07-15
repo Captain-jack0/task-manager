@@ -36,6 +36,8 @@ export function TaskDetailPage() {
           status: values.status,
           priority: values.priority,
           due_date: values.due_date ? new Date(values.due_date).toISOString() : null,
+          energy_level: values.energy_level || null,
+          estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
           tag_ids: values.tag_ids,
         },
       },

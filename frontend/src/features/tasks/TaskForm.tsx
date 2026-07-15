@@ -38,6 +38,9 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
       status: initial?.status ?? 'todo',
       priority: initial?.priority ?? 'medium',
       due_date: initial?.due_date ? initial.due_date.slice(0, 10) : '',
+      energy_level: initial?.energy_level ?? '',
+      estimated_minutes:
+        initial?.estimated_minutes != null ? String(initial.estimated_minutes) : '',
       tag_ids: initial?.tags.map((t) => t.id) ?? [],
     },
   });
@@ -86,6 +89,32 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
       </div>
 
       <Input label="Due date" type="date" {...register('due_date')} />
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="energy_level" className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Energy
+          </label>
+          <select
+            id="energy_level"
+            {...register('energy_level')}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
+          >
+            <option value="">—</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <Input
+          label="Est. minutes"
+          type="number"
+          min={1}
+          placeholder="e.g. 30"
+          error={errors.estimated_minutes?.message}
+          {...register('estimated_minutes')}
+        />
+      </div>
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Tags</span>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '@/api/tasks';
 import type {
+  SuggestParams,
   Task,
   TaskCreateInput,
   TaskListFilters,
@@ -9,6 +10,20 @@ import type {
 } from '@/types/api';
 
 export const TASKS_KEY = ['tasks'] as const;
+
+export function useSuggest() {
+  return useMutation({
+    mutationFn: (params: SuggestParams) => tasksApi.suggest(params),
+  });
+}
+
+export function useSnooze() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tasksApi.snooze(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
 
 export function useTasks(filters: TaskListFilters = {}) {
   return useQuery({

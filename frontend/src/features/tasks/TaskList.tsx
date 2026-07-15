@@ -1,7 +1,7 @@
 import { toast } from 'sonner';
 import { extractErrorMessage } from '@/api/client';
 import type { Task, TaskStatus } from '@/types/api';
-import { useDeleteTask, useUpdateTask } from './useTasks';
+import { useDeleteTask, useSnooze, useUpdateTask } from './useTasks';
 import { TaskCard } from './TaskCard';
 
 interface Props {
@@ -11,12 +11,20 @@ interface Props {
 export function TaskList({ tasks }: Props) {
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
+  const snoozeMutation = useSnooze();
 
   const handleStatus = (id: string, next: TaskStatus) => {
     updateMutation.mutate(
       { id, input: { status: next } },
       { onError: (err) => toast.error(extractErrorMessage(err, 'Update failed')) },
     );
+  };
+
+  const handleSnooze = (id: string) => {
+    snoozeMutation.mutate(id, {
+      onSuccess: () => toast.success('Moved to tomorrow'),
+      onError: (err) => toast.error(extractErrorMessage(err, 'Snooze failed')),
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -34,6 +42,7 @@ export function TaskList({ tasks }: Props) {
           key={task.id}
           task={task}
           onToggleStatus={(next) => handleStatus(task.id, next)}
+          onSnooze={() => handleSnooze(task.id)}
           onDelete={() => handleDelete(task.id)}
         />
       ))}

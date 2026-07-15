@@ -19,10 +19,11 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
 interface Props {
   task: Task;
   onToggleStatus: (next: TaskStatus) => void;
+  onSnooze: () => void;
   onDelete: () => void;
 }
 
-export function TaskCard({ task, onToggleStatus, onDelete }: Props) {
+export function TaskCard({ task, onToggleStatus, onSnooze, onDelete }: Props) {
   const overdue = task.status !== 'done' && isOverdue(task.due_date);
   const nextStatus: TaskStatus =
     task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'todo';
@@ -66,6 +67,16 @@ export function TaskCard({ task, onToggleStatus, onDelete }: Props) {
         </p>
       )}
 
+      {(task.estimated_minutes != null || task.energy_level || task.snooze_count > 0) && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+          {task.estimated_minutes != null && <span>~{task.estimated_minutes}m</span>}
+          {task.energy_level && <span className="capitalize">{task.energy_level} energy</span>}
+          {task.snooze_count > 0 && (
+            <span title="Times postponed">snoozed {task.snooze_count}×</span>
+          )}
+        </div>
+      )}
+
       {task.tags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {task.tags.map((tag) => (
@@ -82,13 +93,25 @@ export function TaskCard({ task, onToggleStatus, onDelete }: Props) {
         >
           Move to {STATUS_LABEL[nextStatus]} →
         </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="text-xs text-slate-400 opacity-0 transition-opacity hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100 dark:hover:text-red-400"
-        >
-          Delete
-        </button>
+        <div className="flex items-center gap-3">
+          {task.status !== 'done' && (
+            <button
+              type="button"
+              onClick={onSnooze}
+              title="Push to tomorrow"
+              className="text-xs text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              Snooze
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-xs text-slate-400 opacity-0 transition-opacity hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100 dark:hover:text-red-400"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );

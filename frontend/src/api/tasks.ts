@@ -1,5 +1,7 @@
 import { apiClient } from './client';
 import type {
+  SuggestParams,
+  SuggestResponse,
   Task,
   TaskCreateInput,
   TaskListFilters,
@@ -10,6 +12,14 @@ import type {
 export const tasksApi = {
   list: async (filters: TaskListFilters = {}): Promise<TaskListResponse> => {
     const { data } = await apiClient.get<TaskListResponse>('/tasks', { params: filters });
+    return data;
+  },
+  suggest: async (params: SuggestParams = {}): Promise<SuggestResponse> => {
+    const { data } = await apiClient.get<SuggestResponse>('/tasks/suggest', { params });
+    return data;
+  },
+  snooze: async (id: string): Promise<Task> => {
+    const { data } = await apiClient.post<Task>(`/tasks/${id}/snooze`);
     return data;
   },
   get: async (id: string): Promise<Task> => {

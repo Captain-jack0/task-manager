@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.task import TaskPriority, TaskStatus
+from app.models.task import TaskEnergy, TaskPriority, TaskStatus
 from app.schemas.tag import TagOut
 
 
@@ -13,6 +13,8 @@ class TaskBase(BaseModel):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: datetime | None = None
+    estimated_minutes: int | None = Field(default=None, ge=1, le=100_000)
+    energy_level: TaskEnergy | None = None
 
     @field_validator("title")
     @classmethod
@@ -33,6 +35,8 @@ class TaskUpdate(BaseModel):
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
     due_date: datetime | None = None
+    estimated_minutes: int | None = Field(default=None, ge=1, le=100_000)
+    energy_level: TaskEnergy | None = None
     tag_ids: list[UUID] | None = None
 
 
@@ -41,6 +45,7 @@ class TaskOut(TaskBase):
 
     id: UUID
     user_id: UUID
+    snooze_count: int = 0
     tags: list[TagOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -51,3 +56,16 @@ class TaskListResponse(BaseModel):
     total: int
     page: int
     limit: int
+
+
+# --- "What should I do now?" suggestion engine ---
+
+
+class TaskSuggestion(BaseModel):
+    task: TaskOut
+    score: float
+    reason: str
+
+
+class SuggestResponse(BaseModel):
+    suggestions: list[TaskSuggestion]

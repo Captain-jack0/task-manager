@@ -1,11 +1,20 @@
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import CurrentUser, SessionDep
-from app.models.task import Task, TaskStatus
+from app.models.task import Task, TaskEnergy, TaskStatus
 from app.repositories import tag_repo, task_repo
-from app.schemas.task import TaskCreate, TaskListResponse, TaskOut, TaskUpdate
+from app.schemas.task import (
+    SuggestResponse,
+    TaskCreate,
+    TaskListResponse,
+    TaskOut,
+    TaskSuggestion,
+    TaskUpdate,
+)
+from app.services import suggestions
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -61,9 +70,34 @@ async def create_task(
         status=payload.status,
         priority=payload.priority,
         due_date=payload.due_date,
+        estimated_minutes=payload.estimated_minutes,
+        energy_level=payload.energy_level,
     )
     created = await task_repo.create_task(session, task=task, tags=tags)
     return TaskOut.model_validate(created)
+
+
+@router.get("/suggest", response_model=SuggestResponse)
+async def suggest_tasks(
+    current_user: CurrentUser,
+    session: SessionDep,
+    minutes: int | None = Query(default=None, ge=1, le=1440),
+    energy: TaskEnergy | None = Query(default=None),
+    limit: int = Query(default=5, ge=1, le=10),
+) -> SuggestResponse:
+    """The 'What should I do now?' engine: rank open tasks by how well they
+    fit the time and energy the user has right now."""
+    tasks = await task_repo.list_active_tasks(session, user_id=current_user.id)
+    now = datetime.now(timezone.utc)
+    ranked = suggestions.rank_tasks(
+        tasks, available_minutes=minutes, energy=energy, now=now, limit=limit
+    )
+    return SuggestResponse(
+        suggestions=[
+            TaskSuggestion(task=TaskOut.model_validate(task), score=round(score, 2), reason=reason)
+            for task, score, reason in ranked
+        ]
+    )
 
 
 @router.get("/{task_id}", response_model=TaskOut)
@@ -98,6 +132,26 @@ async def update_task(
         )
 
     updated = await task_repo.update_task(session, task=task, tags=tags)
+    return TaskOut.model_validate(updated)
+
+
+@router.post("/{task_id}/snooze", response_model=TaskOut)
+async def snooze_task(
+    task_id: UUID, current_user: CurrentUser, session: SessionDep
+) -> TaskOut:
+    """Push a task to a later day without guilt, and count the postponement."""
+    task = await task_repo.get_task(session, task_id=task_id, user_id=current_user.id)
+    if task is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    now = datetime.now(timezone.utc)
+    if task.due_date is not None and task.due_date > now:
+        task.due_date = task.due_date + timedelta(days=1)
+    else:
+        task.due_date = now + timedelta(days=1)
+    task.snooze_count = (task.snooze_count or 0) + 1
+
+    updated = await task_repo.update_task(session, task=task, tags=None)
     return TaskOut.model_validate(updated)
 
 

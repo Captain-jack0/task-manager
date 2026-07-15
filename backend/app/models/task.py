@@ -3,7 +3,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Index
+from sqlalchemy import DateTime, ForeignKey, Index, Integer
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -24,6 +24,14 @@ class TaskStatus(str, Enum):
 
 
 class TaskPriority(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class TaskEnergy(str, Enum):
+    """Mental effort a task needs — used by the 'What should I do now?' engine."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -58,6 +66,19 @@ class Task(Base, UUIDMixin, TimestampMixin):
         default=TaskPriority.MEDIUM,
     )
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # --- Momentum core fields ---
+    # Estimated effort in minutes (null = unknown).
+    estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Mental energy the task demands (null = unspecified).
+    energy_level: Mapped[TaskEnergy | None] = mapped_column(
+        SAEnum(TaskEnergy, name="task_energy", values_callable=lambda e: [m.value for m in e]),
+        nullable=True,
+    )
+    # How many times the task has been pushed to a later day (procrastination signal).
+    snooze_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0", default=0
+    )
 
     user: Mapped["User"] = relationship(back_populates="tasks")
     tags: Mapped[list["Tag"]] = relationship(

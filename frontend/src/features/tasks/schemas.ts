@@ -6,6 +6,15 @@ export const taskFormSchema = z.object({
   status: z.enum(['todo', 'in_progress', 'done']),
   priority: z.enum(['low', 'medium', 'high']),
   due_date: z.string().optional().or(z.literal('')),
+  energy_level: z.enum(['low', 'medium', 'high']).optional().or(z.literal('')),
+  estimated_minutes: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (v) => !v || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 100_000),
+      { message: 'Enter minutes between 1 and 100000' },
+    ),
   tag_ids: z.array(z.string()).default([]),
 });
 
