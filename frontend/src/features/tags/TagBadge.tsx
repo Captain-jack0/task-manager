@@ -10,16 +10,19 @@ interface Props {
 
 export function TagBadge({ tag, onRemove, selected, onClick }: Props) {
   const baseClass = cn(
-    'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition',
+    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
     selected
-      ? 'border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-700/20 dark:text-brand-100'
-      : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200',
+      ? 'border-slate-400 bg-slate-100 text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-white'
+      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800',
   );
-  const style = tag.color ? { borderColor: tag.color, color: tag.color } : undefined;
 
   const inner = (
     <>
-      <span aria-hidden>{tag.color ? '●' : '#'}</span>
+      <span
+        aria-hidden
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: tag.color ?? '#94a3b8' }}
+      />
       <span>{tag.name}</span>
     </>
   );
@@ -28,13 +31,13 @@ export function TagBadge({ tag, onRemove, selected, onClick }: Props) {
   // independent buttons inside to avoid invalid nested-button DOM.
   if (onRemove) {
     return (
-      <span className={cn(baseClass, 'pr-1.5')} style={style} data-testid="tag-badge">
+      <span className={cn(baseClass, 'pr-1.5')} data-testid="tag-badge">
         {onClick ? (
-          <button type="button" onClick={onClick} className="flex items-center gap-1">
+          <button type="button" onClick={onClick} className="flex items-center gap-1.5">
             {inner}
           </button>
         ) : (
-          <span className="flex items-center gap-1">{inner}</span>
+          <span className="flex items-center gap-1.5">{inner}</span>
         )}
         <button
           type="button"
@@ -42,7 +45,7 @@ export function TagBadge({ tag, onRemove, selected, onClick }: Props) {
             e.stopPropagation();
             onRemove();
           }}
-          className="ml-1 text-slate-500 hover:text-red-600"
+          className="ml-0.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
           aria-label={`Remove ${tag.name}`}
         >
           ×
@@ -57,7 +60,6 @@ export function TagBadge({ tag, onRemove, selected, onClick }: Props) {
         type="button"
         onClick={onClick}
         className={cn(baseClass, 'cursor-pointer')}
-        style={style}
         data-testid="tag-badge"
       >
         {inner}
@@ -66,7 +68,7 @@ export function TagBadge({ tag, onRemove, selected, onClick }: Props) {
   }
 
   return (
-    <span className={baseClass} style={style} data-testid="tag-badge">
+    <span className={baseClass} data-testid="tag-badge">
       {inner}
     </span>
   );

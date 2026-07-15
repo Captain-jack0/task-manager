@@ -11,14 +11,15 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<Variant, string> = {
+  // Monochrome primary — the minimalist accent is contrast, not colour.
   primary:
-    'bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-500 disabled:bg-brand-300',
+    'bg-slate-900 text-white hover:bg-slate-700 focus-visible:ring-slate-400 disabled:opacity-40 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200',
   secondary:
-    'bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700',
+    'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800',
   danger:
-    'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 disabled:bg-red-300',
+    'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-400 disabled:opacity-40',
   ghost:
-    'bg-transparent text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800',
+    'text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-300 dark:text-slate-300 dark:hover:bg-slate-800',
 };
 
 const SIZES: Record<Size, string> = {
@@ -40,7 +41,7 @@ export function Button({
       {...rest}
       disabled={disabled || isLoading}
       className={cn(
-        'inline-flex items-center justify-center rounded-md font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 disabled:cursor-not-allowed dark:focus-visible:ring-offset-slate-950',
         VARIANTS[variant],
         SIZES[size],
         className,

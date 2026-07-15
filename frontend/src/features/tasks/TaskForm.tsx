@@ -47,36 +47,36 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
       <Input label="Title" error={errors.title?.message} {...register('title')} />
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="description" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+        <label htmlFor="description" className="text-sm font-medium text-slate-600 dark:text-slate-300">
           Description
         </label>
         <textarea
           id="description"
           rows={3}
           {...register('description')}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="status" className="text-sm font-medium">Status</label>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="status" className="text-sm font-medium text-slate-600 dark:text-slate-300">Status</label>
           <select
             id="status"
             {...register('status')}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
           >
             {STATUSES.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
         </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="priority" className="text-sm font-medium">Priority</label>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="priority" className="text-sm font-medium text-slate-600 dark:text-slate-300">Priority</label>
           <select
             id="priority"
             {...register('priority')}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
           >
             {PRIORITIES.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -88,7 +88,7 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
       <Input label="Due date" type="date" {...register('due_date')} />
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Tags</span>
+        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Tags</span>
         <Controller
           name="tag_ids"
           control={control}

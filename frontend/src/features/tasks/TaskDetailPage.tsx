@@ -66,7 +66,7 @@ export function TaskDetailPage() {
         <button
           type="button"
           onClick={() => navigate('/tasks')}
-          className="text-sm text-brand-600 hover:underline"
+          className="text-sm text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
         >
           ← Back
         </button>
@@ -74,7 +74,7 @@ export function TaskDetailPage() {
           Delete task
         </Button>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <TaskForm
           initial={task}
           onSubmit={handleSubmit}

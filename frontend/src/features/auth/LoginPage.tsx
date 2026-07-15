@@ -33,8 +33,12 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h1 className="text-2xl font-bold">Sign in</h1>
+      <div className="mb-6 flex items-center gap-2 px-1">
+        <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-900 dark:bg-white" />
+        <span className="font-semibold tracking-tight">Tasks</span>
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-800 dark:bg-slate-900">
+        <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Manage your tasks across devices.
         </p>
@@ -59,7 +63,7 @@ export function LoginPage() {
         </form>
         <p className="mt-4 text-center text-sm">
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="font-medium text-brand-600 hover:underline">
+          <Link to="/register" className="font-medium text-slate-900 underline underline-offset-2 dark:text-white">
             Create one
           </Link>
         </p>

@@ -7,3 +7,16 @@ body,
 #root {
   height: 100%;
 }
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    font-feature-settings: 'cv11', 'ss01';
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Quieter default focus — components opt into their own rings. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}

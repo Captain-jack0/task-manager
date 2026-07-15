@@ -22,8 +22,8 @@ test.describe('Task management end-to-end', () => {
     await expect(card).toBeVisible();
     await expect(card.getByText('e2e')).toBeVisible();
 
-    await card.getByRole('button', { name: /to in_progress/i }).click();
-    await expect(card.getByText(/to done/i)).toBeVisible();
+    await card.getByRole('button', { name: /move to in progress/i }).click();
+    await expect(card.getByText(/move to done/i)).toBeVisible();
 
     await page.on('dialog', (dialog) => dialog.accept());
     await card.getByRole('button', { name: 'Delete' }).click();
