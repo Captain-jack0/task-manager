@@ -34,36 +34,65 @@ task-manager/
 └── README.md
 ```
 
-## Local Development
+## Running the project
 
 ### Prerequisites
+- Docker Desktop (running)
 - Node 20+
-- Python 3.12+
-- Docker (for Postgres)
 
-### 1. Start Postgres
+### Quick start (recommended) — Postgres + backend in Docker
+
+`docker compose up -d` brings up **both** the database and the API. The
+backend image runs `alembic upgrade head` on startup, so the schema is created
+automatically — no manual migration step.
+
 ```bash
-docker compose up -d postgres
+# from the repo root
+docker compose up -d          # Postgres (:5432) + backend API (:8000)
+docker compose ps             # both services should be "Up"; api is healthy once /docs loads
 ```
 
-### 2. Backend
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-cp .env.example .env                # adjust if needed
-alembic upgrade head
-uvicorn app.main:app --reload       # http://localhost:8000/docs
-```
+Then start the frontend:
 
-### 3. Frontend
 ```bash
 cd frontend
 npm install
-cp .env.example .env                # VITE_API_BASE_URL=http://localhost:8000
-npm run dev                          # http://localhost:5173
+cp .env.example .env          # VITE_API_BASE_URL=http://localhost:8000
+npm run dev                   # http://localhost:5173
 ```
+
+Open http://localhost:5173. The database starts empty, so **Register** an
+account first, then sign in. API docs: http://localhost:8000/docs.
+
+> If Vite reports port 5173 is taken it will use 5174/5175. The backend only
+> allows the origin in `FRONTEND_URL` (default `http://localhost:5173`), so
+> either free up 5173 or set `FRONTEND_URL` to your actual dev port in
+> `docker-compose.yml` and re-run `docker compose up -d`.
+
+Useful commands:
+
+```bash
+docker compose up -d --build  # rebuild the backend image after changing backend code
+docker compose logs -f backend
+docker compose down           # stop (data persists in the postgres_data volume)
+```
+
+### Alternative — run the backend locally (hot-reload)
+
+Prefer this while actively editing backend code (Python 3.12+ required):
+
+```bash
+docker compose up -d postgres # just the database
+cd backend
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+cp .env.example .env           # adjust if needed
+alembic upgrade head
+uvicorn app.main:app --reload  # http://localhost:8000/docs
+```
+
+The frontend step is the same as above.
 
 ## Testing
 
