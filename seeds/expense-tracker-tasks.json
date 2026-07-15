@@ -1,0 +1,423 @@
+{
+  "meta": {
+    "source": "Expense Tracker — Categorized Transactions, Budgets, Recurring & Installments",
+    "generated": "2026-07-14",
+    "reference": "Expense Tracker/Expense-Tracker/plan/FEATURE_CATEGORIES_TRANSACTIONS.md",
+    "priorityLegend": {
+      "high": "P1 core",
+      "medium": "P2 important",
+      "low": "P3 polish"
+    }
+  },
+  "tags": [
+    {
+      "name": "expense-tracker",
+      "color": "#6366f1"
+    },
+    {
+      "name": "backend",
+      "color": "#0ea5e9"
+    },
+    {
+      "name": "frontend",
+      "color": "#f59e0b"
+    },
+    {
+      "name": "docs",
+      "color": "#64748b"
+    },
+    {
+      "name": "categories",
+      "color": "#10b981"
+    },
+    {
+      "name": "budgets",
+      "color": "#ef4444"
+    },
+    {
+      "name": "transactions",
+      "color": "#8b5cf6"
+    },
+    {
+      "name": "recurring",
+      "color": "#14b8a6"
+    },
+    {
+      "name": "installments",
+      "color": "#ec4899"
+    },
+    {
+      "name": "overview",
+      "color": "#22c55e"
+    },
+    {
+      "name": "quality",
+      "color": "#eab308"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "ET-BE-01 · Category & SubCategory entities + persistence",
+      "description": "Create Category & SubCategory JPA entities, repositories and DB schema (H2/MySQL). AC: tables created; unique (userId,name) per level; cascade rules defined; repository CRUD unit test. Deps: none.",
+      "priority": "high",
+      "status": "done",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "categories"
+      ]
+    },
+    {
+      "title": "ET-BE-02 · Seed default categories & sub-categories",
+      "description": "Seed on first run: Income; Needs (Rent, Groceries, Utilities, Transport, Health); Wants (Dining, Entertainment, Shopping); Savings (Emergency fund, Investment); Other. AC: new user gets system categories; seeding idempotent. Deps: ET-BE-01.",
+      "priority": "high",
+      "status": "done",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "categories"
+      ]
+    },
+    {
+      "title": "ET-BE-03 · Category CRUD API",
+      "description": "GET/POST/PUT/DELETE /categories scoped to current user; system categories read-only. AC: cannot edit/delete system categories; validation errors via ApiResponse.fail; 80% service coverage. Deps: ET-BE-01.",
+      "priority": "high",
+      "status": "done",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "categories"
+      ]
+    },
+    {
+      "title": "ET-BE-04 · SubCategory CRUD API",
+      "description": "GET/POST/PUT/DELETE /subcategories filtered by categoryId. AC: sub-category must belong to a visible category; ownership enforced; tests. Deps: ET-BE-01.",
+      "priority": "high",
+      "status": "done",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "categories"
+      ]
+    },
+    {
+      "title": "ET-FE-01 · Category/SubCategory types + API client",
+      "description": "Extend types/index.ts and services/api.ts (add subCategoriesApi; categoriesApi already stubbed) + React Query hooks. AC: typed client, no any. Deps: none.",
+      "priority": "high",
+      "status": "done",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "categories"
+      ]
+    },
+    {
+      "title": "ET-FE-02 · Category management screen",
+      "description": "List categories grouped by bucket; add/edit/delete user categories; icon + color picker. AC: optimistic updates; system categories read-only. Deps: ET-FE-01, ET-BE-03.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "categories"
+      ]
+    },
+    {
+      "title": "ET-FE-03 · Sub-category management (within a category)",
+      "description": "Expand a category to manage its sub-categories (create/edit/delete). AC: empty-state guidance. Deps: ET-FE-02, ET-BE-04.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "categories"
+      ]
+    },
+    {
+      "title": "ET-BE-05 · monthlyLimit on SubCategory + validation",
+      "description": "Add nullable positive monthlyLimit; expose in sub-category API. AC: reject <= 0; null = no limit; safe migration. Deps: ET-BE-01.",
+      "priority": "high",
+      "status": "done",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "budgets"
+      ]
+    },
+    {
+      "title": "ET-BE-06 · Spending-vs-limit endpoint",
+      "description": "GET /subcategories/{id}/spending?month=YYYY-MM -> {spent, limit, remaining, pct, overLimit}. AC: sums only current user's expenses in month; boundary-date tests. Deps: ET-BE-05, ET-BE-08.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "budgets"
+      ]
+    },
+    {
+      "title": "ET-FE-04 · Limit field in sub-category form",
+      "description": "Optional 'Monthly limit' input. AC: zod validation (>0 or empty); persists. Deps: ET-FE-03, ET-BE-05.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "budgets"
+      ]
+    },
+    {
+      "title": "ET-FE-05 · Limit progress + over-limit warning",
+      "description": "Progress bar spent/limit; red state + warning when exceeded. AC: accessible colors; 'no limit set' when null. Deps: ET-FE-04, ET-BE-06.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "budgets"
+      ]
+    },
+    {
+      "title": "ET-BE-07 · Extend Transaction entity",
+      "description": "Add name, subCategoryId, sourceType(MANUAL|RECURRING|INSTALLMENT), recurringRuleId, installmentPlanId, installmentNo; keep amount, categoryId, transactionDate, type. AC: migration; existing rows unaffected; entity tests. Deps: ET-BE-01.",
+      "priority": "high",
+      "status": "done",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "transactions"
+      ]
+    },
+    {
+      "title": "ET-BE-08 · Create/Update transaction API + rules",
+      "description": "Validate: name & amount required; category required; sub-category required when the category has sub-categories; sub-category must belong to the category; ownership enforced. AC: 400 with clear message on violations; happy-path + rule tests. Deps: ET-BE-07, ET-BE-04.",
+      "priority": "high",
+      "status": "done",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "transactions"
+      ]
+    },
+    {
+      "title": "ET-BE-09 · List/filter transactions",
+      "description": "GET /transactions with filters (categoryId, subCategoryId, from, to, type) + pagination. AC: composable filters; paginated envelope; tests. Deps: ET-BE-08.",
+      "priority": "high",
+      "status": "done",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "transactions"
+      ]
+    },
+    {
+      "title": "ET-FE-06 · Transaction entry form",
+      "description": "Fields: name, amount, category select, dependent sub-category select, date picker. AC: zod schema; server errors surfaced; submit disabled while invalid. Deps: ET-FE-01, ET-BE-08.",
+      "priority": "high",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "transactions"
+      ]
+    },
+    {
+      "title": "ET-FE-07 · Dependent sub-category dropdown",
+      "description": "Sub-category options load from the selected category; required only when options exist; clear on category change. AC: loading/empty handled. Deps: ET-FE-06.",
+      "priority": "high",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "transactions"
+      ]
+    },
+    {
+      "title": "ET-FE-08 · Transaction list + edit/delete",
+      "description": "Filterable list; edit reopens form; delete with confirm. AC: optimistic update; filter by category/sub-category/date. Deps: ET-FE-06, ET-BE-09.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "transactions"
+      ]
+    },
+    {
+      "title": "ET-BE-10 · RecurringRule model + API",
+      "description": "Entity + GET/POST/PUT/DELETE /recurring-rules (frequency, interval, start/end, template amount/category/sub-category). AC: validation (interval>=1, endDate>startDate); tests. Deps: ET-BE-07.",
+      "priority": "high",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "recurring"
+      ]
+    },
+    {
+      "title": "ET-BE-11 · Occurrence generation (idempotent)",
+      "description": "Given 'now', generate all due Transactions from active rules up to today; never double-generate (track nextRunDate / occurrence key). AC: running twice creates each occurrence once; month-boundary & leap tests. Deps: ET-BE-10.",
+      "priority": "high",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "recurring"
+      ]
+    },
+    {
+      "title": "ET-BE-12 · Scheduler + login catch-up",
+      "description": "@Scheduled daily job AND catch-up on login/app-load (POST /recurring-rules/run) so a user who was away still gets past months filled. AC: documented trigger; safe to call repeatedly. Deps: ET-BE-11.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "recurring"
+      ]
+    },
+    {
+      "title": "ET-FE-09 · 'Repeat' controls in the form",
+      "description": "Toggle -> frequency (weekly/monthly/yearly), interval, optional end date. AC: preview text ('Every month until ...'); validation. Deps: ET-FE-06, ET-BE-10.",
+      "priority": "high",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "recurring"
+      ]
+    },
+    {
+      "title": "ET-FE-10 · Recurring rules management",
+      "description": "List active rules, show next run, pause/stop, delete. AC: pausing stops future generation; past rows untouched. Deps: ET-FE-09, ET-BE-12.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "recurring"
+      ]
+    },
+    {
+      "title": "ET-BE-13 · InstallmentPlan model + generation",
+      "description": "On create, split totalAmount into installmentCount equal monthly Transactions (remainder into last one), linked via installmentPlanId + installmentNo. AC: sum == total to the cent; N rows across N months; tests. Deps: ET-BE-07.",
+      "priority": "high",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "installments"
+      ]
+    },
+    {
+      "title": "ET-BE-14 · Installment plan API",
+      "description": "GET/POST/DELETE /installment-plans; show paid vs remaining; delete cancels future unpaid installments only. AC: past charges kept; tests. Deps: ET-BE-13.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "installments"
+      ]
+    },
+    {
+      "title": "ET-FE-11 · Installment option in the form",
+      "description": "Inputs: total, count -> live preview of per-month amount and schedule. AC: preview updates on change; validation (count>=2). Deps: ET-FE-06, ET-BE-13.",
+      "priority": "high",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "installments"
+      ]
+    },
+    {
+      "title": "ET-FE-12 · Installment plan detail",
+      "description": "Paid/remaining, upcoming months, cancel remaining. AC: clear paid vs upcoming states. Deps: ET-FE-11, ET-BE-14.",
+      "priority": "low",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "installments"
+      ]
+    },
+    {
+      "title": "ET-BE-15 · BudgetRule config API (rules for finance)",
+      "description": "GET/PUT /budget-rule (needsPct+wantsPct+savingsPct == 100), default 50/30/20. AC: rejects sums != 100; per-user; tests. Deps: none.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "overview"
+      ]
+    },
+    {
+      "title": "ET-BE-16 · Overview/summary endpoint",
+      "description": "GET /overview?month= -> income, spend per bucket, actual-vs-target, savings rate, sub-category limit statuses, upcoming recurring/installments. AC: single call powers dashboard; tested aggregation. Deps: ET-BE-09, ET-BE-15.",
+      "priority": "high",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "overview"
+      ]
+    },
+    {
+      "title": "ET-FE-13 · 'Rules for finance' settings",
+      "description": "Edit 50/30/20 targets with a sum=100 guard. AC: validation; persists. Deps: ET-BE-15.",
+      "priority": "low",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "overview"
+      ]
+    },
+    {
+      "title": "ET-FE-14 · Overview widgets",
+      "description": "Bucket breakdown vs target, sub-category limit statuses, upcoming recurring/installment list on the dashboard (Recharts/Framer). AC: uses /overview. Deps: ET-FE-01, ET-BE-16.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "overview"
+      ]
+    },
+    {
+      "title": "ET-BE-17 · Backend tests to 80%",
+      "description": "Service + controller + repository tests across the new modules (JUnit 5). AC: raise JaCoCo ratio toward 0.80 per pom.xml plan. Deps: feature tasks.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "backend",
+        "quality"
+      ]
+    },
+    {
+      "title": "ET-FE-15 · Frontend tests",
+      "description": "Vitest for form/validation + Playwright E2E for 'add categorized transaction' and 'create recurring'. AC: critical flows green in CI. Deps: feature tasks.",
+      "priority": "medium",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "frontend",
+        "quality"
+      ]
+    },
+    {
+      "title": "ET-DOC-01 · Update README & API docs",
+      "description": "Document new endpoints, data model, and recurring/installment behavior. AC: README reflects shipped feature. Deps: feature tasks.",
+      "priority": "low",
+      "status": "todo",
+      "tags": [
+        "expense-tracker",
+        "docs",
+        "quality"
+      ]
+    }
+  ]
+}
