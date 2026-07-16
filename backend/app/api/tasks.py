@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from app.api.deps import CurrentUser, SessionDep
 from app.models.task import Task, TaskEnergy, TaskStatus
 from app.models.user import User
-from app.repositories import tag_repo, task_repo, workspace_repo
+from app.repositories import integration_repo, tag_repo, task_repo, workspace_repo
 from app.schemas.task import (
     SuggestResponse,
     TaskCreate,
@@ -15,7 +15,7 @@ from app.schemas.task import (
     TaskSuggestion,
     TaskUpdate,
 )
-from app.services import suggestions
+from app.services import github, suggestions
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -189,6 +189,34 @@ async def snooze_task(
         task.due_date = now + timedelta(days=1)
     task.snooze_count = (task.snooze_count or 0) + 1
 
+    updated = await task_repo.update_task(session, task=task, tags=None)
+    return TaskOut.model_validate(updated)
+
+
+@router.post("/{task_id}/github-issue", response_model=TaskOut)
+async def create_github_issue(
+    task_id: UUID, current_user: CurrentUser, session: SessionDep
+) -> TaskOut:
+    """Open the task as a GitHub issue in the user's connected repo."""
+    task = await _require_task(session, current_user, task_id)
+    if task.github_issue_url:
+        return TaskOut.model_validate(task)  # already linked — idempotent
+
+    integration = await integration_repo.get_github(session, user_id=current_user.id)
+    if integration is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Connect GitHub first (Settings → GitHub)",
+        )
+
+    result = await github.create_issue(
+        integration.token,
+        integration.repo,
+        title=task.title,
+        body=task.description or "",
+    )
+    task.github_issue_url = result["html_url"]
+    task.github_issue_number = result["number"]
     updated = await task_repo.update_task(session, task=task, tags=None)
     return TaskOut.model_validate(updated)
 

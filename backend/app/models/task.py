@@ -86,6 +86,9 @@ class Task(Base, UUIDMixin, TimestampMixin):
     snooze_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0", default=0
     )
+    # Set when the task has been pushed to GitHub as an issue.
+    github_issue_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    github_issue_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="tasks")
     tags: Mapped[list["Tag"]] = relationship(

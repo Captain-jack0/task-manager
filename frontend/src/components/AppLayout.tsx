@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { useAuthStore } from '@/features/auth/authStore';
 import { useLogout } from '@/features/auth/useAuth';
 import { WorkspaceSwitcher } from '@/features/workspaces/WorkspaceSwitcher';
+import { GithubSettings } from '@/features/integrations/GithubSettings';
 
 export function AppLayout() {
   const user = useAuthStore((s) => s.user);
@@ -30,6 +31,7 @@ export function AppLayout() {
             <WorkspaceSwitcher />
           </div>
           <div className="flex items-center gap-2">
+            <GithubSettings />
             <button
               type="button"
               onClick={() => setDark((v) => !v)}

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, tags, tasks, workspaces
+from app.api import auth, integrations, tags, tasks, workspaces
 from app.config import get_settings
 from app.core.errors import register_exception_handlers
 
@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(workspaces.router)
     app.include_router(tasks.router)
     app.include_router(tags.router)
+    app.include_router(integrations.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

@@ -7,9 +7,10 @@ import { TagBadge } from '@/features/tags/TagBadge';
 import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
 import type { TaskStatus } from '@/types/api';
+import { useGithubStatus } from '@/features/integrations/useGithub';
 import { TaskForm } from './TaskForm';
 import type { TaskFormValues } from './schemas';
-import { useDeleteTask, useTask, useUpdateTask } from './useTasks';
+import { useCreateGithubIssue, useDeleteTask, useTask, useUpdateTask } from './useTasks';
 
 const STATUS_STYLE: Record<TaskStatus, string> = {
   todo: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
@@ -34,6 +35,8 @@ export function TaskDetailPage() {
   const taskQuery = useTask(id);
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
+  const createIssue = useCreateGithubIssue();
+  const { data: github } = useGithubStatus();
 
   if (taskQuery.isLoading) return <p className="text-sm text-slate-500">Loading…</p>;
   if (taskQuery.isError || !taskQuery.data)
@@ -89,6 +92,16 @@ export function TaskDetailPage() {
         navigate('/tasks');
       },
       onError: (err) => toast.error(extractErrorMessage(err, 'Delete failed')),
+    });
+  };
+
+  const handleCreateIssue = () => {
+    createIssue.mutate(task.id, {
+      onSuccess: (t) =>
+        toast.success(
+          t.github_issue_number ? `Opened issue #${t.github_issue_number}` : 'Issue opened',
+        ),
+      onError: (err) => toast.error(extractErrorMessage(err, 'Could not open issue')),
     });
   };
 
@@ -166,7 +179,34 @@ export function TaskDetailPage() {
             </div>
           )}
 
-          <div className="mt-6 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <span className="text-xs font-medium text-slate-500">GitHub</span>
+            {task.github_issue_url ? (
+              <a
+                href={task.github_issue_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm font-medium text-slate-900 underline underline-offset-2 dark:text-white"
+              >
+                Issue #{task.github_issue_number} ↗
+              </a>
+            ) : github?.connected ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleCreateIssue}
+                isLoading={createIssue.isPending}
+              >
+                Create GitHub issue
+              </Button>
+            ) : (
+              <span className="text-sm text-slate-400">
+                Connect GitHub in the header to open issues.
+              </span>
+            )}
+          </div>
+
+          <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
             <span className="mb-2 block text-xs font-medium text-slate-500">Set status</span>
             <div className="flex flex-wrap gap-1.5">
               {(['todo', 'in_progress', 'done'] as TaskStatus[]).map((s) => (

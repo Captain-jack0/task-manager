@@ -41,9 +41,21 @@ export interface Task {
   estimated_minutes: number | null;
   energy_level: TaskEnergy | null;
   snooze_count: number;
+  github_issue_url: string | null;
+  github_issue_number: number | null;
   tags: Tag[];
   created_at: string;
   updated_at: string;
+}
+
+export interface GithubStatus {
+  connected: boolean;
+  repo: string | null;
+}
+
+export interface GithubConnectInput {
+  token: string;
+  repo: string;
 }
 
 export interface TokenResponse {

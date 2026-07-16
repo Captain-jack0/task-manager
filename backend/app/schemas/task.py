@@ -47,6 +47,8 @@ class TaskOut(TaskBase):
     user_id: UUID
     workspace_id: UUID
     snooze_count: int = 0
+    github_issue_url: str | None = None
+    github_issue_number: int | None = None
     tags: list[TagOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
