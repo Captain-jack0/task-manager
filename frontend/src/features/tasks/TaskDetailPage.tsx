@@ -1,19 +1,41 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { extractErrorMessage } from '@/api/client';
+import { TagBadge } from '@/features/tags/TagBadge';
+import { formatDate, isOverdue } from '@/lib/date';
+import { cn } from '@/lib/cn';
+import type { TaskStatus } from '@/types/api';
 import { TaskForm } from './TaskForm';
 import type { TaskFormValues } from './schemas';
 import { useDeleteTask, useTask, useUpdateTask } from './useTasks';
 
+const STATUS_STYLE: Record<TaskStatus, string> = {
+  todo: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+};
+const STATUS_LABEL: Record<TaskStatus, string> = {
+  todo: 'To do',
+  in_progress: 'In progress',
+  done: 'Done',
+};
+const PRIORITY_DOT: Record<'low' | 'medium' | 'high', string> = {
+  low: 'bg-slate-400',
+  medium: 'bg-amber-500',
+  high: 'bg-red-500',
+};
+
 export function TaskDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [editing, setEditing] = useState(false);
   const taskQuery = useTask(id);
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
 
-  if (taskQuery.isLoading) return <p className="text-sm">Loading…</p>;
+  if (taskQuery.isLoading) return <p className="text-sm text-slate-500">Loading…</p>;
   if (taskQuery.isError || !taskQuery.data)
     return (
       <div>
@@ -25,8 +47,9 @@ export function TaskDetailPage() {
     );
 
   const task = taskQuery.data;
+  const overdue = task.status !== 'done' && isOverdue(task.due_date);
 
-  const handleSubmit = (values: TaskFormValues) => {
+  const handleSave = (values: TaskFormValues) => {
     updateMutation.mutate(
       {
         id: task.id,
@@ -44,10 +67,17 @@ export function TaskDetailPage() {
       {
         onSuccess: () => {
           toast.success('Saved');
-          navigate('/tasks');
+          setEditing(false);
         },
         onError: (err) => toast.error(extractErrorMessage(err, 'Update failed')),
       },
+    );
+  };
+
+  const handleStatus = (status: TaskStatus) => {
+    updateMutation.mutate(
+      { id: task.id, input: { status } },
+      { onError: (err) => toast.error(extractErrorMessage(err, 'Update failed')) },
     );
   };
 
@@ -67,23 +97,98 @@ export function TaskDetailPage() {
       <div className="mb-4 flex items-center justify-between">
         <button
           type="button"
-          onClick={() => navigate('/tasks')}
+          onClick={() => (editing ? setEditing(false) : navigate('/tasks'))}
           className="text-sm text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
         >
-          ← Back
+          ← {editing ? 'Cancel edit' : 'Back'}
         </button>
-        <Button variant="danger" size="sm" onClick={handleDelete}>
-          Delete task
-        </Button>
+        {!editing && (
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+            <Button variant="danger" size="sm" onClick={handleDelete}>
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <TaskForm
-          initial={task}
-          onSubmit={handleSubmit}
-          onCancel={() => navigate('/tasks')}
-          isSubmitting={updateMutation.isPending}
-        />
-      </div>
+
+      {editing ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+          <TaskForm
+            initial={task}
+            onSubmit={handleSave}
+            onCancel={() => setEditing(false)}
+            isSubmitting={updateMutation.isPending}
+          />
+        </div>
+      ) : (
+        <article className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_STYLE[task.status])}>
+              {STATUS_LABEL[task.status]}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <span className={cn('h-1.5 w-1.5 rounded-full', PRIORITY_DOT[task.priority])} />
+              {task.priority} priority
+            </span>
+          </div>
+
+          <h1 className={cn('mt-3 text-xl font-semibold tracking-tight', task.status === 'done' && 'line-through')}>
+            {task.title}
+          </h1>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+            {task.due_date && (
+              <span className={cn(overdue && 'text-red-600 dark:text-red-400')}>
+                Due {formatDate(task.due_date)}{overdue && ' · overdue'}
+              </span>
+            )}
+            {task.estimated_minutes != null && <span>~{task.estimated_minutes} min</span>}
+            {task.energy_level && <span className="capitalize">{task.energy_level} energy</span>}
+            {task.snooze_count > 0 && <span>snoozed {task.snooze_count}×</span>}
+          </div>
+
+          {task.description ? (
+            <p className="mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+              {task.description}
+            </p>
+          ) : (
+            <p className="mt-5 text-sm italic text-slate-400">No description.</p>
+          )}
+
+          {task.tags.length > 0 && (
+            <div className="mt-5 flex flex-wrap gap-1.5">
+              {task.tags.map((tag) => (
+                <TagBadge key={tag.id} tag={tag} />
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <span className="mb-2 block text-xs font-medium text-slate-500">Set status</span>
+            <div className="flex flex-wrap gap-1.5">
+              {(['todo', 'in_progress', 'done'] as TaskStatus[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => handleStatus(s)}
+                  disabled={task.status === s || updateMutation.isPending}
+                  className={cn(
+                    'rounded-lg px-2.5 py-1 text-sm transition-colors disabled:cursor-not-allowed',
+                    task.status === s
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                      : 'border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800',
+                  )}
+                >
+                  {STATUS_LABEL[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </article>
+      )}
     </div>
   );
 }
