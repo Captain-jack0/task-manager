@@ -4,6 +4,7 @@ import { useTasks } from '@/features/tasks/useTasks';
 import { isCompleted } from '@/features/tasks/status';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { formatDate } from '@/lib/date';
+import { CapacityPlanner } from './CapacityPlanner';
 
 function daysFromNow(days: number): Date {
   const d = new Date();
@@ -100,6 +101,9 @@ export function ReviewPage() {
     )
     .sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1));
   const open = tasks.filter((t) => !isCompleted(t.status));
+  const thisWeekLoad = tasks.filter(
+    (t) => !isCompleted(t.status) && t.due_date && new Date(t.due_date) <= weekAhead,
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -120,6 +124,8 @@ export function ReviewPage() {
             <Stat label="Overdue" value={overdue.length} />
             <Stat label="Still open" value={open.length} />
           </div>
+
+          <CapacityPlanner tasks={thisWeekLoad} />
 
           <Section
             title="Completed this week"
