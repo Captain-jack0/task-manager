@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.crypto import decrypt_secret
+from app.core.rate_limit import limiter
 from app.models.task import Task, TaskEnergy, TaskStatus
 from app.models.user import User
 from app.repositories import integration_repo, tag_repo, task_repo, workspace_repo
@@ -194,8 +196,9 @@ async def snooze_task(
 
 
 @router.post("/{task_id}/github-issue", response_model=TaskOut)
+@limiter.limit("30/minute")
 async def create_github_issue(
-    task_id: UUID, current_user: CurrentUser, session: SessionDep
+    request: Request, task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> TaskOut:
     """Open the task as a GitHub issue in the user's connected repo."""
     task = await _require_task(session, current_user, task_id)
@@ -210,7 +213,7 @@ async def create_github_issue(
         )
 
     result = await github.create_issue(
-        integration.token,
+        decrypt_secret(integration.token),
         integration.repo,
         title=task.title,
         body=task.description or "",

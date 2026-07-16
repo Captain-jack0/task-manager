@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="dev-secret-change-me")
     jwt_algorithm: str = Field(default="HS256")
     jwt_expire_minutes: int = Field(default=60)
+    # Any string — a proper Fernet key is derived from it. Used to encrypt
+    # third-party secrets (e.g. GitHub tokens) at rest. Set a stable value in
+    # production; changing it makes previously-encrypted secrets unreadable.
+    app_encryption_key: str = Field(default="dev-encryption-key-change-me")
     frontend_url: str = Field(default="http://localhost:5173")
     environment: Literal["development", "production", "test"] = Field(default="development")
 

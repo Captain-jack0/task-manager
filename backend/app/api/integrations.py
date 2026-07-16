@@ -1,6 +1,7 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.rate_limit import limiter
 from app.repositories import integration_repo
 from app.schemas.integration import GithubConnectRequest, GithubStatusOut
 from app.services import github
@@ -18,8 +19,12 @@ async def github_status(current_user: CurrentUser, session: SessionDep) -> Githu
 
 
 @router.put("/github", response_model=GithubStatusOut)
+@limiter.limit("10/minute")
 async def connect_github(
-    payload: GithubConnectRequest, current_user: CurrentUser, session: SessionDep
+    request: Request,
+    payload: GithubConnectRequest,
+    current_user: CurrentUser,
+    session: SessionDep,
 ) -> GithubStatusOut:
     # Verify the token can reach the repo before persisting it.
     await github.verify_repo(payload.token, payload.repo)
