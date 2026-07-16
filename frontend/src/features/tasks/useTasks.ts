@@ -59,8 +59,11 @@ export function useUpdateTask() {
     onMutate: async ({ id, input }) => {
       await qc.cancelQueries({ queryKey: TASKS_KEY });
       const snapshot = qc.getQueriesData<TaskListResponse>({ queryKey: TASKS_KEY });
+      // Guard on Array.isArray: TASKS_KEY also matches the single-task detail
+      // query (['tasks','detail',id]) whose data is a Task, not a list — without
+      // this, data.data.map throws in onMutate and the request is never sent.
       qc.setQueriesData<TaskListResponse>({ queryKey: TASKS_KEY }, (data) =>
-        data
+        data && Array.isArray(data.data)
           ? {
               ...data,
               data: data.data.map((t) =>
@@ -86,7 +89,7 @@ export function useDeleteTask() {
       await qc.cancelQueries({ queryKey: TASKS_KEY });
       const snapshot = qc.getQueriesData<TaskListResponse>({ queryKey: TASKS_KEY });
       qc.setQueriesData<TaskListResponse>({ queryKey: TASKS_KEY }, (data) =>
-        data
+        data && Array.isArray(data.data)
           ? {
               ...data,
               data: data.data.filter((t) => t.id !== id),
