@@ -78,7 +78,12 @@ export function TaskCard({
           {task.estimated_minutes != null && <span>~{task.estimated_minutes}m</span>}
           {task.energy_level && <span className="capitalize">{task.energy_level} energy</span>}
           {task.snooze_count > 0 && (
-            <span title="Times postponed">snoozed {task.snooze_count}×</span>
+            <span
+              title="Times postponed"
+              className={cn(task.snooze_count >= 3 && 'font-medium text-amber-600 dark:text-amber-400')}
+            >
+              snoozed {task.snooze_count}×
+            </span>
           )}
         </div>
       )}

@@ -34,6 +34,14 @@ export function useCreateGithubIssue() {
   });
 }
 
+export function useResetSnooze() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tasksApi.resetSnooze(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
+
 export function useTasks(filters: TaskListFilters = {}) {
   return useQuery({
     queryKey: [...TASKS_KEY, filters],

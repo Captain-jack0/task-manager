@@ -22,6 +22,10 @@ export const tasksApi = {
     const { data } = await apiClient.post<Task>(`/tasks/${id}/snooze`);
     return data;
   },
+  resetSnooze: async (id: string): Promise<Task> => {
+    const { data } = await apiClient.post<Task>(`/tasks/${id}/reset-snooze`);
+    return data;
+  },
   get: async (id: string): Promise<Task> => {
     const { data } = await apiClient.get<Task>(`/tasks/${id}`);
     return data;

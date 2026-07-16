@@ -220,6 +220,18 @@ async def snooze_task(
     return TaskOut.model_validate(updated)
 
 
+@router.post("/{task_id}/reset-snooze", response_model=TaskOut)
+async def reset_snooze(
+    task_id: UUID, current_user: CurrentUser, session: SessionDep
+) -> TaskOut:
+    """Clear the postponement counter — used when the user acts on a task that
+    the procrastination detector flagged."""
+    task = await _require_task(session, current_user, task_id)
+    task.snooze_count = 0
+    updated = await task_repo.update_task(session, task=task, tags=None)
+    return TaskOut.model_validate(updated)
+
+
 @router.post("/{task_id}/github-issue", response_model=TaskOut)
 @limiter.limit("30/minute")
 async def create_github_issue(

@@ -13,6 +13,7 @@ import { useMembers } from '@/features/workspaces/useMembers';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { cn } from '@/lib/cn';
 import { QuickAdd } from './QuickAdd';
+import { StuckTasksNudge } from './StuckTasksNudge';
 import { SuggestPanel } from './SuggestPanel';
 import { TaskBoard } from './TaskBoard';
 import { TaskForm } from './TaskForm';
@@ -132,6 +133,8 @@ export function TasksPage() {
       </div>
 
       <QuickAdd />
+
+      <StuckTasksNudge tasks={tasks} />
 
       <SuggestPanel workspaceId={workspaceId} />
 
