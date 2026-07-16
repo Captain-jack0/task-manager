@@ -17,7 +17,10 @@ class User(Base, UUIDMixin, TimestampMixin):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     tasks: Mapped[list["Task"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        foreign_keys="Task.user_id",
     )
     tags: Mapped[list["Tag"]] = relationship(
         back_populates="user", cascade="all, delete-orphan", lazy="selectin"

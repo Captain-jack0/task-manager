@@ -65,6 +65,13 @@ class Task(Base, UUIDMixin, TimestampMixin):
         ForeignKey("projects.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Optional assignee — must be a member of the task's workspace. Unlinked
+    # (SET NULL) if that user is removed.
+    assignee_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[TaskStatus] = mapped_column(
@@ -99,7 +106,11 @@ class Task(Base, UUIDMixin, TimestampMixin):
     github_issue_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
     github_issue_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    user: Mapped["User"] = relationship(back_populates="tasks")
+    # foreign_keys disambiguates: Task has two FKs to users (creator user_id +
+    # assignee_id); the user/tasks relationship follows the creator.
+    user: Mapped["User"] = relationship(
+        back_populates="tasks", foreign_keys="Task.user_id"
+    )
     tags: Mapped[list["Tag"]] = relationship(
         secondary=task_tags, back_populates="tasks", lazy="selectin"
     )

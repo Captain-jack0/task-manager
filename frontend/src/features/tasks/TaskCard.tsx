@@ -15,12 +15,21 @@ interface Props {
   task: Task;
   projectName?: string;
   projectColor?: string | null;
+  assigneeEmail?: string;
   onToggleStatus: (next: TaskStatus) => void;
   onSnooze: () => void;
   onDelete: () => void;
 }
 
-export function TaskCard({ task, projectName, projectColor, onToggleStatus, onSnooze, onDelete }: Props) {
+export function TaskCard({
+  task,
+  projectName,
+  projectColor,
+  assigneeEmail,
+  onToggleStatus,
+  onSnooze,
+  onDelete,
+}: Props) {
   const done = isCompleted(task.status);
   const overdue = !done && isOverdue(task.due_date);
   const nextStatus = NEXT_STATUS[task.status];
@@ -81,6 +90,15 @@ export function TaskCard({ task, projectName, projectColor, onToggleStatus, onSn
             style={{ backgroundColor: projectColor ?? '#94a3b8' }}
           />
           {projectName}
+        </div>
+      )}
+
+      {assigneeEmail && (
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+            {assigneeEmail[0]}
+          </span>
+          <span className="truncate">{assigneeEmail}</span>
         </div>
       )}
 

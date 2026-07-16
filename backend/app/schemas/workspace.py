@@ -1,9 +1,24 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models.workspace import Workspace, WorkspaceRole
+
+
+class MemberOut(BaseModel):
+    user_id: UUID
+    email: str
+    role: WorkspaceRole
+
+
+class AddMemberRequest(BaseModel):
+    email: EmailStr
+    role: WorkspaceRole = WorkspaceRole.MEMBER
+
+
+class UpdateMemberRequest(BaseModel):
+    role: WorkspaceRole
 
 
 class WorkspaceCreate(BaseModel):

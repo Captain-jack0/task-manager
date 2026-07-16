@@ -9,6 +9,7 @@ import type { TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { useTags, useDeleteTag } from '@/features/tags/useTags';
 import { useCreateProject, useDeleteProject, useProjects } from '@/features/projects/useProjects';
+import { useMembers } from '@/features/workspaces/useMembers';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { cn } from '@/lib/cn';
 import { SuggestPanel } from './SuggestPanel';
@@ -37,6 +38,7 @@ export function TasksPage() {
   const { data: tagList } = useTags();
   const deleteTag = useDeleteTag();
   const { data: projectList } = useProjects(workspaceId);
+  const { data: memberList } = useMembers(workspaceId);
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
   const tasksQuery = useTasks({
@@ -61,6 +63,7 @@ export function TasksPage() {
         energy_level: values.energy_level || null,
         estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
         project_id: values.project_id || null,
+        assignee_id: values.assignee_id || null,
         tag_ids: values.tag_ids,
       },
       {
@@ -111,6 +114,7 @@ export function TasksPage() {
   };
 
   const projects = projectList ?? [];
+  const members = memberList ?? [];
   const tasks = tasksQuery.data?.data ?? [];
   const total = tasksQuery.data?.total ?? tasks.length;
 
@@ -309,9 +313,9 @@ export function TasksPage() {
               action={<Button onClick={() => setCreateOpen(true)}>Create task</Button>}
             />
           ) : view === 'board' ? (
-            <TaskBoard tasks={tasks} projects={projects} />
+            <TaskBoard tasks={tasks} projects={projects} members={members} />
           ) : (
-            <TaskList tasks={tasks} projects={projects} />
+            <TaskList tasks={tasks} projects={projects} members={members} />
           )}
         </section>
       </div>

@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn';
 import type { TaskStatus } from '@/types/api';
 import { useGithubStatus } from '@/features/integrations/useGithub';
 import { useProjects } from '@/features/projects/useProjects';
+import { useMembers } from '@/features/workspaces/useMembers';
 import { TaskForm } from './TaskForm';
 import type { TaskFormValues } from './schemas';
 import { STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
@@ -30,6 +31,7 @@ export function TaskDetailPage() {
   const createIssue = useCreateGithubIssue();
   const { data: github } = useGithubStatus();
   const { data: projects } = useProjects(taskQuery.data?.workspace_id);
+  const { data: members } = useMembers(taskQuery.data?.workspace_id);
 
   if (taskQuery.isLoading) return <p className="text-sm text-slate-500">Loading…</p>;
   if (taskQuery.isError || !taskQuery.data)
@@ -45,6 +47,7 @@ export function TaskDetailPage() {
   const task = taskQuery.data;
   const overdue = !isCompleted(task.status) && isOverdue(task.due_date);
   const project = task.project_id ? projects?.find((p) => p.id === task.project_id) : undefined;
+  const assignee = task.assignee_id ? members?.find((m) => m.user_id === task.assignee_id) : undefined;
 
   const handleSave = (values: TaskFormValues) => {
     updateMutation.mutate(
@@ -59,6 +62,7 @@ export function TaskDetailPage() {
           energy_level: values.energy_level || null,
           estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
           project_id: values.project_id || null,
+          assignee_id: values.assignee_id || null,
           tag_ids: values.tag_ids,
         },
       },
@@ -155,6 +159,14 @@ export function TaskDetailPage() {
                   style={{ backgroundColor: project.color ?? '#94a3b8' }}
                 />
                 {project.name}
+              </span>
+            )}
+            {assignee && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                  {assignee.email[0]}
+                </span>
+                {assignee.email}
               </span>
             )}
             {task.due_date && (

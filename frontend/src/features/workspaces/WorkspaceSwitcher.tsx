@@ -1,14 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { extractErrorMessage } from '@/api/client';
 import { useWorkspaceStore } from './workspaceStore';
 import { useCreateWorkspace, useWorkspaces } from './useWorkspaces';
+import { MembersModal } from './MembersModal';
 
 export function WorkspaceSwitcher() {
   const { data: workspaces } = useWorkspaces();
   const currentId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const setCurrent = useWorkspaceStore((s) => s.setCurrentWorkspaceId);
   const createWorkspace = useCreateWorkspace();
+  const [membersOpen, setMembersOpen] = useState(false);
 
   // Default to the personal workspace once loaded, or if the stored id is stale.
   useEffect(() => {
@@ -37,6 +39,8 @@ export function WorkspaceSwitcher() {
 
   if (!workspaces || workspaces.length === 0) return null;
 
+  const current = workspaces.find((w) => w.id === currentId);
+
   return (
     <div className="flex items-center gap-1">
       <select
@@ -60,6 +64,18 @@ export function WorkspaceSwitcher() {
       >
         +
       </button>
+      {current && !current.is_personal && (
+        <button
+          type="button"
+          onClick={() => setMembersOpen(true)}
+          className="hidden rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 sm:inline-block dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          Members
+        </button>
+      )}
+      {current && (
+        <MembersModal workspace={current} open={membersOpen} onClose={() => setMembersOpen(false)} />
+      )}
     </div>
   );
 }

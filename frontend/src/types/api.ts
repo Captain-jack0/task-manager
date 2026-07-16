@@ -21,6 +21,17 @@ export interface WorkspaceCreateInput {
   name: string;
 }
 
+export interface Member {
+  user_id: string;
+  email: string;
+  role: WorkspaceRole;
+}
+
+export interface AddMemberInput {
+  email: string;
+  role?: WorkspaceRole;
+}
+
 export interface Project {
   id: string;
   workspace_id: string;
@@ -54,6 +65,7 @@ export interface Task {
   estimated_minutes: number | null;
   energy_level: TaskEnergy | null;
   project_id: string | null;
+  assignee_id: string | null;
   snooze_count: number;
   github_issue_url: string | null;
   github_issue_number: number | null;
@@ -94,6 +106,7 @@ export interface TaskCreateInput {
   estimated_minutes?: number | null;
   energy_level?: TaskEnergy | null;
   project_id?: string | null;
+  assignee_id?: string | null;
   tag_ids?: string[];
 }
 
@@ -128,6 +141,7 @@ export interface TaskListFilters {
   status?: TaskStatus;
   tag_id?: string;
   project_id?: string;
+  assignee_id?: string;
   search?: string;
   page?: number;
   limit?: number;

@@ -16,6 +16,7 @@ class TaskBase(BaseModel):
     estimated_minutes: int | None = Field(default=None, ge=1, le=100_000)
     energy_level: TaskEnergy | None = None
     project_id: UUID | None = None
+    assignee_id: UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -39,6 +40,7 @@ class TaskUpdate(BaseModel):
     estimated_minutes: int | None = Field(default=None, ge=1, le=100_000)
     energy_level: TaskEnergy | None = None
     project_id: UUID | None = None
+    assignee_id: UUID | None = None
     tag_ids: list[UUID] | None = None
 
 

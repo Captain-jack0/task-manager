@@ -1,19 +1,21 @@
 import { toast } from 'sonner';
 import { extractErrorMessage } from '@/api/client';
-import type { Project, Task, TaskStatus } from '@/types/api';
+import type { Member, Project, Task, TaskStatus } from '@/types/api';
 import { useDeleteTask, useSnooze, useUpdateTask } from './useTasks';
 import { TaskCard } from './TaskCard';
 
 interface Props {
   tasks: Task[];
   projects: Project[];
+  members: Member[];
 }
 
-export function TaskList({ tasks, projects }: Props) {
+export function TaskList({ tasks, projects, members }: Props) {
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
   const snoozeMutation = useSnooze();
   const projectById = new Map(projects.map((p) => [p.id, p]));
+  const emailById = new Map(members.map((m) => [m.user_id, m.email]));
 
   const handleStatus = (id: string, next: TaskStatus) => {
     updateMutation.mutate(
@@ -47,6 +49,7 @@ export function TaskList({ tasks, projects }: Props) {
             task={task}
             projectName={project?.name}
             projectColor={project?.color}
+            assigneeEmail={task.assignee_id ? emailById.get(task.assignee_id) : undefined}
             onToggleStatus={(next) => handleStatus(task.id, next)}
             onSnooze={() => handleSnooze(task.id)}
             onDelete={() => handleDelete(task.id)}

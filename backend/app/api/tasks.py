@@ -66,6 +66,21 @@ async def _validate_project(
         )
 
 
+async def _validate_assignee(
+    session: AsyncSession, assignee_id: UUID | None, workspace_id: UUID
+) -> None:
+    """A task can only be assigned to a member of its workspace."""
+    if assignee_id is None:
+        return
+    if not await workspace_repo.is_member(
+        session, workspace_id=workspace_id, user_id=assignee_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Assignee is not a member of this workspace",
+        )
+
+
 @router.get("", response_model=TaskListResponse)
 async def list_tasks(
     current_user: CurrentUser,
@@ -74,6 +89,7 @@ async def list_tasks(
     status_filter: TaskStatus | None = Query(default=None, alias="status"),
     tag_id: UUID | None = None,
     project_id: UUID | None = None,
+    assignee_id: UUID | None = None,
     search: str | None = None,
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
@@ -85,6 +101,7 @@ async def list_tasks(
         status=status_filter,
         tag_id=tag_id,
         project_id=project_id,
+        assignee_id=assignee_id,
         search=search,
         page=page,
         limit=limit,
@@ -106,6 +123,7 @@ async def create_task(
 ) -> TaskOut:
     ws_id = await resolve_workspace(session, current_user, workspace_id)
     await _validate_project(session, payload.project_id, ws_id)
+    await _validate_assignee(session, payload.assignee_id, ws_id)
     tags = await _resolve_tags(session, tag_ids=payload.tag_ids, user_id=current_user.id)
     task = Task(
         user_id=current_user.id,
@@ -118,6 +136,7 @@ async def create_task(
         estimated_minutes=payload.estimated_minutes,
         energy_level=payload.energy_level,
         project_id=payload.project_id,
+        assignee_id=payload.assignee_id,
     )
     created = await task_repo.create_task(session, task=task, tags=tags)
     return TaskOut.model_validate(created)
@@ -168,6 +187,8 @@ async def update_task(
     update_data = payload.model_dump(exclude_unset=True, exclude={"tag_ids"})
     if "project_id" in update_data:
         await _validate_project(session, update_data["project_id"], task.workspace_id)
+    if "assignee_id" in update_data:
+        await _validate_assignee(session, update_data["assignee_id"], task.workspace_id)
     for key, value in update_data.items():
         setattr(task, key, value)
 

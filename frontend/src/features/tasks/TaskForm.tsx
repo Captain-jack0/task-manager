@@ -5,6 +5,7 @@ import { Input } from '@/components/Input';
 import type { Task, TaskPriority } from '@/types/api';
 import { TagPicker } from '@/features/tags/TagPicker';
 import { useProjects } from '@/features/projects/useProjects';
+import { useMembers } from '@/features/workspaces/useMembers';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { taskFormSchema, type TaskFormValues } from './schemas';
 import { STATUS_LABEL, STATUS_ORDER } from './status';
@@ -26,6 +27,7 @@ const PRIORITIES: { value: TaskPriority; label: string }[] = [
 export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
   const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? undefined;
   const { data: projects } = useProjects(workspaceId);
+  const { data: members } = useMembers(workspaceId);
   const {
     register,
     handleSubmit,
@@ -40,6 +42,7 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
       priority: initial?.priority ?? 'medium',
       due_date: initial?.due_date ? initial.due_date.slice(0, 10) : '',
       project_id: initial?.project_id ?? '',
+      assignee_id: initial?.assignee_id ?? '',
       energy_level: initial?.energy_level ?? '',
       estimated_minutes:
         initial?.estimated_minutes != null ? String(initial.estimated_minutes) : '',
@@ -105,6 +108,24 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
           {(projects ?? []).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="assignee_id" className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          Assignee
+        </label>
+        <select
+          id="assignee_id"
+          {...register('assignee_id')}
+          className="cursor-pointer rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
+        >
+          <option value="">Unassigned</option>
+          {(members ?? []).map((m) => (
+            <option key={m.user_id} value={m.user_id}>
+              {m.email}
             </option>
           ))}
         </select>

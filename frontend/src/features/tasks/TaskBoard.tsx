@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { extractErrorMessage } from '@/api/client';
-import type { Project, Task, TaskStatus } from '@/types/api';
+import type { Member, Project, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { cn } from '@/lib/cn';
 import { useUpdateTask } from './useTasks';
@@ -16,11 +16,20 @@ const PRIORITY_DOT: Record<Task['priority'], string> = {
   high: 'bg-red-500',
 };
 
-export function TaskBoard({ tasks, projects }: { tasks: Task[]; projects: Project[] }) {
+export function TaskBoard({
+  tasks,
+  projects,
+  members,
+}: {
+  tasks: Task[];
+  projects: Project[];
+  members: Member[];
+}) {
   const updateMutation = useUpdateTask();
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStatus, setOverStatus] = useState<TaskStatus | null>(null);
   const projectById = new Map(projects.map((p) => [p.id, p]));
+  const emailById = new Map(members.map((m) => [m.user_id, m.email]));
 
   const move = (id: string, status: TaskStatus) => {
     const task = tasks.find((t) => t.id === id);
@@ -114,6 +123,14 @@ export function TaskBoard({ tasks, projects }: { tasks: Task[]; projects: Projec
                         style={{ backgroundColor: projectById.get(task.project_id)?.color ?? '#94a3b8' }}
                       />
                       {projectById.get(task.project_id)?.name}
+                    </div>
+                  )}
+                  {task.assignee_id && emailById.has(task.assignee_id) && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                        {emailById.get(task.assignee_id)?.[0]}
+                      </span>
+                      <span className="truncate">{emailById.get(task.assignee_id)}</span>
                     </div>
                   )}
                   {task.tags.length > 0 && (
