@@ -64,7 +64,7 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
           <select
             id="status"
             {...register('status')}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
+            className="cursor-pointer rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
           >
             {STATUSES.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
@@ -76,7 +76,7 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
           <select
             id="priority"
             {...register('priority')}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
+            className="cursor-pointer rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
           >
             {PRIORITIES.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -95,7 +95,7 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
           <select
             id="energy_level"
             {...register('energy_level')}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
+            className="cursor-pointer rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
           >
             <option value="">—</option>
             <option value="low">Low</option>

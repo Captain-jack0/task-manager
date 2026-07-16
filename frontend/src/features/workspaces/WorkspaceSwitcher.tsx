@@ -43,7 +43,7 @@ export function WorkspaceSwitcher() {
         aria-label="Current workspace"
         value={currentId ?? ''}
         onChange={(e) => setCurrent(e.target.value)}
-        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 transition-colors focus:border-slate-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+        className="cursor-pointer rounded-lg border border-slate-200 bg-white py-1.5 pl-2.5 pr-8 text-sm text-slate-700 transition-colors focus:border-slate-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
       >
         {workspaces.map((w) => (
           <option key={w.id} value={w.id}>
