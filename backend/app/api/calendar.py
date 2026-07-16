@@ -44,10 +44,18 @@ async def calendar_feed(request: Request, token: str, session: SessionDep) -> Re
 
     tasks = await calendar_repo.tasks_for_calendar(session, user_id=user.id)
     settings = get_settings()
-    app_url = settings.cors_origins[0] if settings.cors_origins else ""
+    app_url = settings.app_public_url or (
+        settings.cors_origins[0] if settings.cors_origins else ""
+    )
     body = ics.build_calendar(tasks, now=datetime.now(UTC), app_url=app_url)
     return Response(
         content=body,
         media_type="text/calendar; charset=utf-8",
-        headers={"Content-Disposition": 'inline; filename="momentum.ics"'},
+        headers={
+            # The token lives in the URL, so keep this secret-bearing response
+            # out of shared caches and disable MIME sniffing.
+            "Content-Disposition": 'inline; filename="momentum.ics"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )

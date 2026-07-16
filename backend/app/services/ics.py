@@ -73,7 +73,9 @@ def _status(task: Task) -> str:
 
 
 def _event_lines(task: Task, *, now: datetime, app_url: str) -> list[str]:
-    assert task.due_date is not None  # caller guarantees this
+    # Caller filters these out; explicit guard (not assert, which -O strips).
+    if task.due_date is None:
+        return []
     start = task.due_date
     duration = timedelta(minutes=task.estimated_minutes or _DEFAULT_MINUTES)
     end = start + duration

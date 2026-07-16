@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     # production; changing it makes previously-encrypted secrets unreadable.
     app_encryption_key: str = Field(default="dev-encryption-key-change-me")
     frontend_url: str = Field(default="http://localhost:5173")
+    # Public frontend URL embedded as task links in the iCal feed. Falls back to
+    # the first CORS origin when unset (cors_origins is an allow-list, not
+    # order-guaranteed, so prefer setting this explicitly in production).
+    app_public_url: str = Field(default="")
     environment: Literal["development", "production", "test"] = Field(default="development")
 
     @property
