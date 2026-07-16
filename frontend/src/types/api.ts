@@ -32,6 +32,14 @@ export interface AddMemberInput {
   role?: WorkspaceRole;
 }
 
+export interface Capacity {
+  user_id: string;
+  email: string;
+  role: WorkspaceRole;
+  open_task_count: number;
+  estimated_minutes: number;
+}
+
 export interface Project {
   id: string;
   workspace_id: string;

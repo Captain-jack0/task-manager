@@ -13,6 +13,15 @@ export function useMembers(workspaceId?: string) {
   });
 }
 
+export function useCapacity(workspaceId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['workspaces', workspaceId ?? null, 'capacity'],
+    queryFn: () => workspacesApi.capacity(workspaceId as string),
+    enabled: Boolean(workspaceId) && enabled,
+    staleTime: 15_000,
+  });
+}
+
 export function useAddMember(workspaceId: string) {
   const qc = useQueryClient();
   return useMutation({

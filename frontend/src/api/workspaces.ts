@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import type {
   AddMemberInput,
+  Capacity,
   Member,
   Workspace,
   WorkspaceCreateInput,
@@ -37,5 +38,9 @@ export const workspacesApi = {
   },
   removeMember: async (workspaceId: string, userId: string): Promise<void> => {
     await apiClient.delete(`/workspaces/${workspaceId}/members/${userId}`);
+  },
+  capacity: async (workspaceId: string): Promise<Capacity[]> => {
+    const { data } = await apiClient.get<Capacity[]>(`/workspaces/${workspaceId}/capacity`);
+    return data;
   },
 };

@@ -5,9 +5,22 @@ import { Input } from '@/components/Input';
 import { Modal } from '@/components/Modal';
 import { extractErrorMessage } from '@/api/client';
 import type { Workspace, WorkspaceRole } from '@/types/api';
-import { useAddMember, useMembers, useRemoveMember, useUpdateMemberRole } from './useMembers';
+import {
+  useAddMember,
+  useCapacity,
+  useMembers,
+  useRemoveMember,
+  useUpdateMemberRole,
+} from './useMembers';
 
 const ROLES: WorkspaceRole[] = ['admin', 'member', 'guest'];
+
+function formatLoad(min: number): string {
+  if (min <= 0) return '0m';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h ? `${h}h${m ? ` ${m}m` : ''}` : `${m}m`;
+}
 const SELECT_CLASS =
   'rounded-lg border border-slate-200 bg-white py-1 pl-2 pr-7 text-xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200';
 
@@ -21,12 +34,14 @@ export function MembersModal({ workspace, open, onClose }: Props) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<WorkspaceRole>('member');
   const { data: members } = useMembers(open ? workspace.id : undefined);
+  const { data: capacity } = useCapacity(open ? workspace.id : undefined, !workspace.is_personal);
   const addMember = useAddMember(workspace.id);
   const updateRole = useUpdateMemberRole(workspace.id);
   const removeMember = useRemoveMember(workspace.id);
 
   const canManage =
     (workspace.role === 'owner' || workspace.role === 'admin') && !workspace.is_personal;
+  const maxLoad = Math.max(1, ...(capacity ?? []).map((c) => c.estimated_minutes));
 
   const handleAdd = () => {
     if (!email.trim()) return;
@@ -126,6 +141,35 @@ export function MembersModal({ workspace, open, onClose }: Props) {
               Only owners and admins can manage members.
             </p>
           )}
+
+          <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
+            <span className="mb-2 block text-xs font-medium text-slate-500">
+              Team load · open assigned tasks
+            </span>
+            <div className="space-y-2.5">
+              {(capacity ?? []).map((c) => (
+                <div key={c.user_id}>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">
+                      {c.email}
+                    </span>
+                    <span className="shrink-0 text-slate-400">
+                      {c.open_task_count} open · {formatLoad(c.estimated_minutes)}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div
+                      className="h-1.5 rounded-full bg-slate-900 dark:bg-slate-200"
+                      style={{ width: `${Math.round((c.estimated_minutes / maxLoad) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {(capacity ?? []).length === 0 && (
+                <p className="text-xs text-slate-400">No members.</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </Modal>

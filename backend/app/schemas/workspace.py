@@ -21,6 +21,14 @@ class UpdateMemberRequest(BaseModel):
     role: WorkspaceRole
 
 
+class CapacityOut(BaseModel):
+    user_id: UUID
+    email: str
+    role: WorkspaceRole
+    open_task_count: int
+    estimated_minutes: int
+
+
 class WorkspaceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
 

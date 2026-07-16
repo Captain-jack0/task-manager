@@ -5,9 +5,10 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.deps import CurrentUser, SessionDep
 from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceRole
-from app.repositories import workspace_repo
+from app.repositories import task_repo, workspace_repo
 from app.schemas.workspace import (
     AddMemberRequest,
+    CapacityOut,
     MemberOut,
     UpdateMemberRequest,
     WorkspaceCreate,
@@ -78,6 +79,26 @@ async def list_members(
     await _require_workspace(session, current_user, workspace_id)
     members = await workspace_repo.list_members(session, workspace_id=workspace_id)
     return [MemberOut(user_id=u.id, email=u.email, role=role) for u, role in members]
+
+
+@router.get("/{workspace_id}/capacity", response_model=list[CapacityOut])
+async def workspace_capacity(
+    workspace_id: UUID, current_user: CurrentUser, session: SessionDep
+) -> list[CapacityOut]:
+    """Per-member load: open assigned tasks + their total estimated minutes."""
+    await _require_workspace(session, current_user, workspace_id)
+    members = await workspace_repo.list_members(session, workspace_id=workspace_id)
+    cap = await task_repo.capacity_by_assignee(session, workspace_id=workspace_id)
+    return [
+        CapacityOut(
+            user_id=u.id,
+            email=u.email,
+            role=role,
+            open_task_count=cap.get(u.id, (0, 0))[0],
+            estimated_minutes=cap.get(u.id, (0, 0))[1],
+        )
+        for u, role in members
+    ]
 
 
 @router.post(

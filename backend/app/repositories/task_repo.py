@@ -68,6 +68,27 @@ async def get_task(session: AsyncSession, *, task_id: UUID) -> Task | None:
     return result.scalar_one_or_none()
 
 
+async def capacity_by_assignee(
+    session: AsyncSession, *, workspace_id: UUID
+) -> dict[UUID, tuple[int, int]]:
+    """Per-assignee load in a workspace: {user_id: (open_task_count, est_minutes)},
+    counting only actionable (not done/closed) assigned tasks."""
+    result = await session.execute(
+        select(
+            Task.assignee_id,
+            func.count(Task.id),
+            func.coalesce(func.sum(Task.estimated_minutes), 0),
+        )
+        .where(
+            Task.workspace_id == workspace_id,
+            Task.assignee_id.is_not(None),
+            Task.status.not_in([TaskStatus.DONE, TaskStatus.CLOSED]),
+        )
+        .group_by(Task.assignee_id)
+    )
+    return {row[0]: (row[1], int(row[2])) for row in result.all()}
+
+
 async def create_task(session: AsyncSession, *, task: Task, tags: list[Tag]) -> Task:
     task.tags = tags
     session.add(task)
