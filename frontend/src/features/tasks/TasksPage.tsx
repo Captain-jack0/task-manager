@@ -11,6 +11,7 @@ import { useTags, useDeleteTag } from '@/features/tags/useTags';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { cn } from '@/lib/cn';
 import { SuggestPanel } from './SuggestPanel';
+import { TaskBoard } from './TaskBoard';
 import { TaskForm } from './TaskForm';
 import { TaskList } from './TaskList';
 import type { TaskFormValues } from './schemas';
@@ -28,6 +29,7 @@ export function TasksPage() {
   const [tagFilter, setTagFilter] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [view, setView] = useState<'list' | 'board'>('list');
 
   const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? undefined;
 
@@ -35,10 +37,11 @@ export function TasksPage() {
   const deleteTag = useDeleteTag();
   const tasksQuery = useTasks({
     workspace_id: workspaceId,
-    status: statusFilter === 'all' ? undefined : statusFilter,
+    // The board shows every status as a column, so it ignores the status filter.
+    status: view === 'board' || statusFilter === 'all' ? undefined : statusFilter,
     tag_id: tagFilter,
     search: search || undefined,
-    limit: 50,
+    limit: 100,
   });
   const createTask = useCreateTask();
 
@@ -94,28 +97,30 @@ export function TasksPage() {
 
       <div className="grid gap-8 lg:grid-cols-[200px_1fr]">
         <aside className="space-y-6">
-          <div>
-            <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Status
-            </h2>
-            <div className="flex flex-col gap-0.5">
-              {STATUS_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setStatusFilter(opt.value)}
-                  className={cn(
-                    'rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors',
-                    statusFilter === opt.value
-                      ? 'bg-slate-900 font-medium text-white dark:bg-white dark:text-slate-900'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
+          {view === 'list' && (
+            <div>
+              <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Status
+              </h2>
+              <div className="flex flex-col gap-0.5">
+                {STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setStatusFilter(opt.value)}
+                    className={cn(
+                      'rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors',
+                      statusFilter === opt.value
+                        ? 'bg-slate-900 font-medium text-white dark:bg-white dark:text-slate-900'
+                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -151,14 +156,31 @@ export function TasksPage() {
         </aside>
 
         <section>
-          <div className="mb-5">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <Input
               aria-label="Search tasks"
               placeholder="Search tasks…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full max-w-sm"
+              className="w-full max-w-xs"
             />
+            <div className="flex gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-800">
+              {(['list', 'board'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setView(v)}
+                  className={cn(
+                    'rounded-md px-3 py-1 text-sm capitalize transition-colors',
+                    view === v
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
+                  )}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
           </div>
 
           {tasksQuery.isLoading ? (
@@ -175,6 +197,8 @@ export function TasksPage() {
               }
               action={<Button onClick={() => setCreateOpen(true)}>Create task</Button>}
             />
+          ) : view === 'board' ? (
+            <TaskBoard tasks={tasks} />
           ) : (
             <TaskList tasks={tasks} />
           )}
