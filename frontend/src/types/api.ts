@@ -40,6 +40,15 @@ export interface Project {
   created_at: string;
 }
 
+export interface Comment {
+  id: string;
+  task_id: string;
+  author_id: string;
+  author_email: string;
+  body: string;
+  created_at: string;
+}
+
 export interface ProjectCreateInput {
   name: string;
   color?: string | null;

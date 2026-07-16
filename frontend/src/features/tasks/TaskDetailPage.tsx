@@ -10,6 +10,7 @@ import type { TaskStatus } from '@/types/api';
 import { useGithubStatus } from '@/features/integrations/useGithub';
 import { useProjects } from '@/features/projects/useProjects';
 import { useMembers } from '@/features/workspaces/useMembers';
+import { CommentsSection } from './CommentsSection';
 import { TaskForm } from './TaskForm';
 import type { TaskFormValues } from './schemas';
 import { STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
@@ -243,6 +244,8 @@ export function TaskDetailPage() {
               ))}
             </div>
           </div>
+
+          <CommentsSection taskId={task.id} members={members ?? []} />
         </article>
       )}
     </div>
