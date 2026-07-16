@@ -96,6 +96,11 @@ export interface GithubStatus {
   repo: string | null;
 }
 
+export interface CalendarSubscription {
+  url: string;
+  token: string;
+}
+
 export interface GithubConnectInput {
   token: string;
   repo: string;
