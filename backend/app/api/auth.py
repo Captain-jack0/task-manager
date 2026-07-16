@@ -4,6 +4,7 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, SessionDep
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
+from app.repositories import workspace_repo
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.user import UserOut
 
@@ -24,6 +25,12 @@ async def register(payload: RegisterRequest, session: SessionDep) -> TokenRespon
 
     user = User(email=payload.email.lower(), password_hash=hash_password(payload.password))
     session.add(user)
+    await session.flush()
+
+    # Every user starts with a private personal workspace.
+    await workspace_repo.create_workspace(
+        session, name="Personal", owner_id=user.id, is_personal=True
+    )
     await session.commit()
     await session.refresh(user)
 

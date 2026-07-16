@@ -45,6 +45,7 @@ class TaskOut(TaskBase):
 
     id: UUID
     user_id: UUID
+    workspace_id: UUID
     snooze_count: int = 0
     tags: list[TagOut] = Field(default_factory=list)
     created_at: datetime

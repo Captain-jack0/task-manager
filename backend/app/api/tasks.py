@@ -5,7 +5,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models.task import Task, TaskEnergy, TaskStatus
-from app.repositories import tag_repo, task_repo
+from app.models.user import User
+from app.repositories import tag_repo, task_repo, workspace_repo
 from app.schemas.task import (
     SuggestResponse,
     TaskCreate,
@@ -15,8 +16,42 @@ from app.schemas.task import (
     TaskUpdate,
 )
 from app.services import suggestions
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+async def _require_workspace(
+    session: AsyncSession, user: User, workspace_id: UUID | None
+) -> UUID:
+    """Resolve the target workspace: default to the user's personal one, and
+    verify membership when an explicit workspace is given."""
+    if workspace_id is None:
+        personal = await workspace_repo.get_personal(session, user_id=user.id)
+        if personal is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No personal workspace",
+            )
+        return personal.id
+    if not await workspace_repo.is_member(
+        session, workspace_id=workspace_id, user_id=user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this workspace",
+        )
+    return workspace_id
+
+
+async def _require_task(session: AsyncSession, user: User, task_id: UUID) -> Task:
+    """Fetch a task and ensure the current user is a member of its workspace."""
+    task = await task_repo.get_task(session, task_id=task_id)
+    if task is None or not await workspace_repo.is_member(
+        session, workspace_id=task.workspace_id, user_id=user.id
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return task
 
 
 async def _resolve_tags(session, *, tag_ids, user_id):
@@ -35,15 +70,17 @@ async def _resolve_tags(session, *, tag_ids, user_id):
 async def list_tasks(
     current_user: CurrentUser,
     session: SessionDep,
+    workspace_id: UUID | None = None,
     status_filter: TaskStatus | None = Query(default=None, alias="status"),
     tag_id: UUID | None = None,
     search: str | None = None,
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> TaskListResponse:
+    ws_id = await _require_workspace(session, current_user, workspace_id)
     rows, total = await task_repo.list_tasks(
         session,
-        user_id=current_user.id,
+        workspace_id=ws_id,
         status=status_filter,
         tag_id=tag_id,
         search=search,
@@ -60,11 +97,16 @@ async def list_tasks(
 
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
 async def create_task(
-    payload: TaskCreate, current_user: CurrentUser, session: SessionDep
+    payload: TaskCreate,
+    current_user: CurrentUser,
+    session: SessionDep,
+    workspace_id: UUID | None = None,
 ) -> TaskOut:
+    ws_id = await _require_workspace(session, current_user, workspace_id)
     tags = await _resolve_tags(session, tag_ids=payload.tag_ids, user_id=current_user.id)
     task = Task(
         user_id=current_user.id,
+        workspace_id=ws_id,
         title=payload.title,
         description=payload.description,
         status=payload.status,
@@ -81,13 +123,15 @@ async def create_task(
 async def suggest_tasks(
     current_user: CurrentUser,
     session: SessionDep,
+    workspace_id: UUID | None = None,
     minutes: int | None = Query(default=None, ge=1, le=1440),
     energy: TaskEnergy | None = Query(default=None),
     limit: int = Query(default=5, ge=1, le=10),
 ) -> SuggestResponse:
-    """The 'What should I do now?' engine: rank open tasks by how well they
-    fit the time and energy the user has right now."""
-    tasks = await task_repo.list_active_tasks(session, user_id=current_user.id)
+    """The 'What should I do now?' engine: rank open tasks in the workspace by
+    how well they fit the time and energy the user has right now."""
+    ws_id = await _require_workspace(session, current_user, workspace_id)
+    tasks = await task_repo.list_active_tasks(session, workspace_id=ws_id)
     now = datetime.now(timezone.utc)
     ranked = suggestions.rank_tasks(
         tasks, available_minutes=minutes, energy=energy, now=now, limit=limit
@@ -104,9 +148,7 @@ async def suggest_tasks(
 async def get_task(
     task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> TaskOut:
-    task = await task_repo.get_task(session, task_id=task_id, user_id=current_user.id)
-    if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    task = await _require_task(session, current_user, task_id)
     return TaskOut.model_validate(task)
 
 
@@ -117,9 +159,7 @@ async def update_task(
     current_user: CurrentUser,
     session: SessionDep,
 ) -> TaskOut:
-    task = await task_repo.get_task(session, task_id=task_id, user_id=current_user.id)
-    if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    task = await _require_task(session, current_user, task_id)
 
     update_data = payload.model_dump(exclude_unset=True, exclude={"tag_ids"})
     for key, value in update_data.items():
@@ -140,9 +180,7 @@ async def snooze_task(
     task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> TaskOut:
     """Push a task to a later day without guilt, and count the postponement."""
-    task = await task_repo.get_task(session, task_id=task_id, user_id=current_user.id)
-    if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    task = await _require_task(session, current_user, task_id)
 
     now = datetime.now(timezone.utc)
     if task.due_date is not None and task.due_date > now:
@@ -159,7 +197,5 @@ async def snooze_task(
 async def delete_task(
     task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> None:
-    task = await task_repo.get_task(session, task_id=task_id, user_id=current_user.id)
-    if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    task = await _require_task(session, current_user, task_id)
     await task_repo.delete_task(session, task=task)

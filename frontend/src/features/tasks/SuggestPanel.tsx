@@ -24,7 +24,11 @@ function chipClass(active: boolean): string {
   );
 }
 
-export function SuggestPanel() {
+interface Props {
+  workspaceId?: string;
+}
+
+export function SuggestPanel({ workspaceId }: Props) {
   const [minutes, setMinutes] = useState(30);
   const [energy, setEnergy] = useState<TaskEnergy | undefined>(undefined);
   const [suggestions, setSuggestions] = useState<TaskSuggestion[] | null>(null);
@@ -35,7 +39,7 @@ export function SuggestPanel() {
 
   const runSuggest = () => {
     suggest.mutate(
-      { minutes, energy, limit: 8 },
+      { workspace_id: workspaceId, minutes, energy, limit: 8 },
       {
         onSuccess: (res) => {
           setSuggestions(res.suggestions);

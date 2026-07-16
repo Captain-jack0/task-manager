@@ -1,11 +1,24 @@
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEnergy = 'low' | 'medium' | 'high';
+export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'guest';
 
 export interface User {
   id: string;
   email: string;
   created_at: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  is_personal: boolean;
+  role: WorkspaceRole;
+  created_at: string;
+}
+
+export interface WorkspaceCreateInput {
+  name: string;
 }
 
 export interface Tag {
@@ -19,6 +32,7 @@ export interface Tag {
 export interface Task {
   id: string;
   user_id: string;
+  workspace_id: string;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -69,6 +83,7 @@ export interface SuggestResponse {
 }
 
 export interface SuggestParams {
+  workspace_id?: string;
   minutes?: number;
   energy?: TaskEnergy;
   limit?: number;
@@ -82,6 +97,7 @@ export interface TagCreateInput {
 export type TagUpdateInput = Partial<TagCreateInput>;
 
 export interface TaskListFilters {
+  workspace_id?: string;
   status?: TaskStatus;
   tag_id?: string;
   search?: string;

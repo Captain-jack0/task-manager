@@ -11,15 +11,15 @@ from app.models.task import Task, TaskStatus
 async def list_tasks(
     session: AsyncSession,
     *,
-    user_id: UUID,
+    workspace_id: UUID,
     status: TaskStatus | None = None,
     tag_id: UUID | None = None,
     search: str | None = None,
     page: int = 1,
     limit: int = 20,
 ) -> tuple[Sequence[Task], int]:
-    base = select(Task).where(Task.user_id == user_id)
-    count_base = select(func.count(Task.id)).where(Task.user_id == user_id)
+    base = select(Task).where(Task.workspace_id == workspace_id)
+    count_base = select(func.count(Task.id)).where(Task.workspace_id == workspace_id)
 
     if status is not None:
         base = base.where(Task.status == status)
@@ -41,19 +41,20 @@ async def list_tasks(
 
 
 async def list_active_tasks(
-    session: AsyncSession, *, user_id: UUID
+    session: AsyncSession, *, workspace_id: UUID
 ) -> Sequence[Task]:
-    """All not-done tasks for a user — candidate pool for the suggestion engine."""
+    """Not-done tasks in a workspace — candidate pool for the suggestion engine."""
     result = await session.execute(
-        select(Task).where(Task.user_id == user_id, Task.status != TaskStatus.DONE)
+        select(Task).where(
+            Task.workspace_id == workspace_id, Task.status != TaskStatus.DONE
+        )
     )
     return result.scalars().unique().all()
 
 
-async def get_task(session: AsyncSession, *, task_id: UUID, user_id: UUID) -> Task | None:
-    result = await session.execute(
-        select(Task).where(Task.id == task_id, Task.user_id == user_id)
-    )
+async def get_task(session: AsyncSession, *, task_id: UUID) -> Task | None:
+    """Fetch a task by id. Authorization is handled at the workspace layer."""
+    result = await session.execute(select(Task).where(Task.id == task_id))
     return result.scalar_one_or_none()
 
 

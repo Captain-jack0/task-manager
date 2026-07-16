@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from './Button';
 import { useAuthStore } from '@/features/auth/authStore';
 import { useLogout } from '@/features/auth/useAuth';
+import { WorkspaceSwitcher } from '@/features/workspaces/WorkspaceSwitcher';
 
 export function AppLayout() {
   const user = useAuthStore((s) => s.user);
@@ -21,10 +22,13 @@ export function AppLayout() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-slate-50/80 backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/80">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <Link to="/tasks" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-900 dark:bg-white" />
-            Tasks
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/tasks" className="flex items-center gap-2 font-semibold tracking-tight">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-900 dark:bg-white" />
+              Tasks
+            </Link>
+            <WorkspaceSwitcher />
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"

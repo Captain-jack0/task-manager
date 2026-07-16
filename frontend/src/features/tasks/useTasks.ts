@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '@/api/tasks';
+import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import type {
   SuggestParams,
   Task,
@@ -44,7 +45,8 @@ export function useTask(id: string | undefined) {
 export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: TaskCreateInput) => tasksApi.create(input),
+    mutationFn: (input: TaskCreateInput) =>
+      tasksApi.create(input, useWorkspaceStore.getState().currentWorkspaceId),
     onSuccess: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
   });
 }

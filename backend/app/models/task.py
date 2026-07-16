@@ -49,6 +49,13 @@ class Task(Base, UUIDMixin, TimestampMixin):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
+    # Workspace the task lives in (personal or team). All task access is
+    # authorised through workspace membership.
+    workspace_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[TaskStatus] = mapped_column(

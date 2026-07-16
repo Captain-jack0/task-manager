@@ -8,6 +8,7 @@ import { extractErrorMessage } from '@/api/client';
 import type { TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { useTags, useDeleteTag } from '@/features/tags/useTags';
+import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { cn } from '@/lib/cn';
 import { SuggestPanel } from './SuggestPanel';
 import { TaskForm } from './TaskForm';
@@ -28,9 +29,12 @@ export function TasksPage() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
 
+  const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? undefined;
+
   const { data: tagList } = useTags();
   const deleteTag = useDeleteTag();
   const tasksQuery = useTasks({
+    workspace_id: workspaceId,
     status: statusFilter === 'all' ? undefined : statusFilter,
     tag_id: tagFilter,
     search: search || undefined,
@@ -86,7 +90,7 @@ export function TasksPage() {
         <Button onClick={() => setCreateOpen(true)}>+ New task</Button>
       </div>
 
-      <SuggestPanel />
+      <SuggestPanel workspaceId={workspaceId} />
 
       <div className="grid gap-8 lg:grid-cols-[200px_1fr]">
         <aside className="space-y-6">

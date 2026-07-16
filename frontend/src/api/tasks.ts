@@ -26,8 +26,10 @@ export const tasksApi = {
     const { data } = await apiClient.get<Task>(`/tasks/${id}`);
     return data;
   },
-  create: async (input: TaskCreateInput): Promise<Task> => {
-    const { data } = await apiClient.post<Task>('/tasks', input);
+  create: async (input: TaskCreateInput, workspaceId?: string | null): Promise<Task> => {
+    const { data } = await apiClient.post<Task>('/tasks', input, {
+      params: workspaceId ? { workspace_id: workspaceId } : undefined,
+    });
     return data;
   },
   update: async (id: string, input: TaskUpdateInput): Promise<Task> => {
