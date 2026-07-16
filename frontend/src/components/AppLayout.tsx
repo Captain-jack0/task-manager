@@ -28,6 +28,12 @@ export function AppLayout() {
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-900 dark:bg-white" />
               Tasks
             </Link>
+            <Link
+              to="/review"
+              className="hidden text-sm text-slate-500 transition-colors hover:text-slate-900 sm:inline dark:text-slate-400 dark:hover:text-white"
+            >
+              Review
+            </Link>
             <WorkspaceSwitcher />
           </div>
           <div className="flex items-center gap-2">
