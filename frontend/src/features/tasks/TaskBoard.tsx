@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { extractErrorMessage } from '@/api/client';
-import type { Task, TaskStatus } from '@/types/api';
+import type { Project, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { cn } from '@/lib/cn';
 import { useUpdateTask } from './useTasks';
@@ -16,10 +16,11 @@ const PRIORITY_DOT: Record<Task['priority'], string> = {
   high: 'bg-red-500',
 };
 
-export function TaskBoard({ tasks }: { tasks: Task[] }) {
+export function TaskBoard({ tasks, projects }: { tasks: Task[]; projects: Project[] }) {
   const updateMutation = useUpdateTask();
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStatus, setOverStatus] = useState<TaskStatus | null>(null);
+  const projectById = new Map(projects.map((p) => [p.id, p]));
 
   const move = (id: string, status: TaskStatus) => {
     const task = tasks.find((t) => t.id === id);
@@ -105,6 +106,15 @@ export function TaskBoard({ tasks }: { tasks: Task[] }) {
                       {task.estimated_minutes != null && task.energy_level && ' · '}
                       {task.energy_level && `${task.energy_level} energy`}
                     </p>
+                  )}
+                  {task.project_id && projectById.has(task.project_id) && (
+                    <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-slate-400">
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: projectById.get(task.project_id)?.color ?? '#94a3b8' }}
+                      />
+                      {projectById.get(task.project_id)?.name}
+                    </div>
                   )}
                   {task.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">

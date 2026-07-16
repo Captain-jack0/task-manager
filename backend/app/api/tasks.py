@@ -3,12 +3,19 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
+from app.api.access import resolve_workspace
 from app.api.deps import CurrentUser, SessionDep
 from app.core.crypto import decrypt_secret
 from app.core.rate_limit import limiter
 from app.models.task import Task, TaskEnergy, TaskStatus
 from app.models.user import User
-from app.repositories import integration_repo, tag_repo, task_repo, workspace_repo
+from app.repositories import (
+    integration_repo,
+    project_repo,
+    tag_repo,
+    task_repo,
+    workspace_repo,
+)
 from app.schemas.task import (
     SuggestResponse,
     TaskCreate,
@@ -21,29 +28,6 @@ from app.services import github, suggestions
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
-
-
-async def _require_workspace(
-    session: AsyncSession, user: User, workspace_id: UUID | None
-) -> UUID:
-    """Resolve the target workspace: default to the user's personal one, and
-    verify membership when an explicit workspace is given."""
-    if workspace_id is None:
-        personal = await workspace_repo.get_personal(session, user_id=user.id)
-        if personal is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="No personal workspace",
-            )
-        return personal.id
-    if not await workspace_repo.is_member(
-        session, workspace_id=workspace_id, user_id=user.id
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not a member of this workspace",
-        )
-    return workspace_id
 
 
 async def _require_task(session: AsyncSession, user: User, task_id: UUID) -> Task:
@@ -68,6 +52,20 @@ async def _resolve_tags(session, *, tag_ids, user_id):
     return tags
 
 
+async def _validate_project(
+    session: AsyncSession, project_id: UUID | None, workspace_id: UUID
+) -> None:
+    """A task's project must belong to the same workspace as the task."""
+    if project_id is None:
+        return
+    project = await project_repo.get(session, project_id=project_id)
+    if project is None or project.workspace_id != workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Project does not belong to this workspace",
+        )
+
+
 @router.get("", response_model=TaskListResponse)
 async def list_tasks(
     current_user: CurrentUser,
@@ -75,16 +73,18 @@ async def list_tasks(
     workspace_id: UUID | None = None,
     status_filter: TaskStatus | None = Query(default=None, alias="status"),
     tag_id: UUID | None = None,
+    project_id: UUID | None = None,
     search: str | None = None,
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> TaskListResponse:
-    ws_id = await _require_workspace(session, current_user, workspace_id)
+    ws_id = await resolve_workspace(session, current_user, workspace_id)
     rows, total = await task_repo.list_tasks(
         session,
         workspace_id=ws_id,
         status=status_filter,
         tag_id=tag_id,
+        project_id=project_id,
         search=search,
         page=page,
         limit=limit,
@@ -104,7 +104,8 @@ async def create_task(
     session: SessionDep,
     workspace_id: UUID | None = None,
 ) -> TaskOut:
-    ws_id = await _require_workspace(session, current_user, workspace_id)
+    ws_id = await resolve_workspace(session, current_user, workspace_id)
+    await _validate_project(session, payload.project_id, ws_id)
     tags = await _resolve_tags(session, tag_ids=payload.tag_ids, user_id=current_user.id)
     task = Task(
         user_id=current_user.id,
@@ -116,6 +117,7 @@ async def create_task(
         due_date=payload.due_date,
         estimated_minutes=payload.estimated_minutes,
         energy_level=payload.energy_level,
+        project_id=payload.project_id,
     )
     created = await task_repo.create_task(session, task=task, tags=tags)
     return TaskOut.model_validate(created)
@@ -132,7 +134,7 @@ async def suggest_tasks(
 ) -> SuggestResponse:
     """The 'What should I do now?' engine: rank open tasks in the workspace by
     how well they fit the time and energy the user has right now."""
-    ws_id = await _require_workspace(session, current_user, workspace_id)
+    ws_id = await resolve_workspace(session, current_user, workspace_id)
     tasks = await task_repo.list_active_tasks(session, workspace_id=ws_id)
     now = datetime.now(timezone.utc)
     ranked = suggestions.rank_tasks(
@@ -164,6 +166,8 @@ async def update_task(
     task = await _require_task(session, current_user, task_id)
 
     update_data = payload.model_dump(exclude_unset=True, exclude={"tag_ids"})
+    if "project_id" in update_data:
+        await _validate_project(session, update_data["project_id"], task.workspace_id)
     for key, value in update_data.items():
         setattr(task, key, value)
 

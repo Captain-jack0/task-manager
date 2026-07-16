@@ -13,12 +13,14 @@ const PRIORITY_DOT: Record<Task['priority'], string> = {
 
 interface Props {
   task: Task;
+  projectName?: string;
+  projectColor?: string | null;
   onToggleStatus: (next: TaskStatus) => void;
   onSnooze: () => void;
   onDelete: () => void;
 }
 
-export function TaskCard({ task, onToggleStatus, onSnooze, onDelete }: Props) {
+export function TaskCard({ task, projectName, projectColor, onToggleStatus, onSnooze, onDelete }: Props) {
   const done = isCompleted(task.status);
   const overdue = !done && isOverdue(task.due_date);
   const nextStatus = NEXT_STATUS[task.status];
@@ -69,6 +71,16 @@ export function TaskCard({ task, onToggleStatus, onSnooze, onDelete }: Props) {
           {task.snooze_count > 0 && (
             <span title="Times postponed">snoozed {task.snooze_count}×</span>
           )}
+        </div>
+      )}
+
+      {projectName && (
+        <div className="mt-2.5 inline-flex w-fit items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <span
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: projectColor ?? '#94a3b8' }}
+          />
+          {projectName}
         </div>
       )}
 

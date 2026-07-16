@@ -6,7 +6,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api import auth, integrations, tags, tasks, workspaces
+from app.api import auth, integrations, projects, tags, tasks, workspaces
 from app.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.rate_limit import limiter
@@ -46,6 +46,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth.router)
     app.include_router(workspaces.router)
+    app.include_router(projects.router)
     app.include_router(tasks.router)
     app.include_router(tags.router)
     app.include_router(integrations.router)

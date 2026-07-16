@@ -14,6 +14,7 @@ async def list_tasks(
     workspace_id: UUID,
     status: TaskStatus | None = None,
     tag_id: UUID | None = None,
+    project_id: UUID | None = None,
     search: str | None = None,
     page: int = 1,
     limit: int = 20,
@@ -24,6 +25,9 @@ async def list_tasks(
     if status is not None:
         base = base.where(Task.status == status)
         count_base = count_base.where(Task.status == status)
+    if project_id is not None:
+        base = base.where(Task.project_id == project_id)
+        count_base = count_base.where(Task.project_id == project_id)
     if search:
         like = f"%{search}%"
         cond = or_(Task.title.ilike(like), Task.description.ilike(like))

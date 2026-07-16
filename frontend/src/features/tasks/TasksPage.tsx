@@ -8,6 +8,7 @@ import { extractErrorMessage } from '@/api/client';
 import type { TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { useTags, useDeleteTag } from '@/features/tags/useTags';
+import { useCreateProject, useDeleteProject, useProjects } from '@/features/projects/useProjects';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { cn } from '@/lib/cn';
 import { SuggestPanel } from './SuggestPanel';
@@ -26,6 +27,7 @@ const STATUS_OPTIONS: { value: TaskStatus | 'all'; label: string }[] = [
 export function TasksPage() {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [tagFilter, setTagFilter] = useState<string | undefined>(undefined);
+  const [projectFilter, setProjectFilter] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [view, setView] = useState<'list' | 'board'>('list');
@@ -34,11 +36,15 @@ export function TasksPage() {
 
   const { data: tagList } = useTags();
   const deleteTag = useDeleteTag();
+  const { data: projectList } = useProjects(workspaceId);
+  const createProject = useCreateProject();
+  const deleteProject = useDeleteProject();
   const tasksQuery = useTasks({
     workspace_id: workspaceId,
     // The board shows every status as a column, so it ignores the status filter.
     status: view === 'board' || statusFilter === 'all' ? undefined : statusFilter,
     tag_id: tagFilter,
+    project_id: projectFilter,
     search: search || undefined,
     limit: 100,
   });
@@ -54,6 +60,7 @@ export function TasksPage() {
         due_date: values.due_date ? new Date(values.due_date).toISOString() : null,
         energy_level: values.energy_level || null,
         estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
+        project_id: values.project_id || null,
         tag_ids: values.tag_ids,
       },
       {
@@ -77,6 +84,33 @@ export function TasksPage() {
     });
   };
 
+  const handleCreateProject = () => {
+    const name = window.prompt('Project name');
+    if (!name?.trim()) return;
+    createProject.mutate(
+      { name: name.trim() },
+      {
+        onSuccess: (p) => {
+          toast.success(`Project "${p.name}" created`);
+          setProjectFilter(p.id);
+        },
+        onError: (err) => toast.error(extractErrorMessage(err, 'Could not create project')),
+      },
+    );
+  };
+
+  const handleDeleteProject = (id: string, name: string) => {
+    if (!window.confirm(`Delete project "${name}"? Its tasks stay, just unassigned.`)) return;
+    deleteProject.mutate(id, {
+      onSuccess: () => {
+        toast.success('Project deleted');
+        if (projectFilter === id) setProjectFilter(undefined);
+      },
+      onError: (err) => toast.error(extractErrorMessage(err, 'Could not delete project')),
+    });
+  };
+
+  const projects = projectList ?? [];
   const tasks = tasksQuery.data?.data ?? [];
   const total = tasksQuery.data?.total ?? tasks.length;
 
@@ -152,6 +186,80 @@ export function TasksPage() {
               )}
             </div>
           </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between px-1">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Projects
+              </h2>
+              <button
+                type="button"
+                onClick={handleCreateProject}
+                title="New project"
+                aria-label="New project"
+                className="text-base leading-none text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                +
+              </button>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={() => setProjectFilter(undefined)}
+                className={cn(
+                  'rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors',
+                  projectFilter === undefined
+                    ? 'bg-slate-100 font-medium text-slate-900 dark:bg-slate-800 dark:text-white'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
+                )}
+              >
+                All projects
+              </button>
+              {projects.map((p) => (
+                <div
+                  key={p.id}
+                  className={cn(
+                    'group flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition-colors',
+                    projectFilter === p.id
+                      ? 'bg-slate-100 dark:bg-slate-800'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-800',
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setProjectFilter(p.id === projectFilter ? undefined : p.id)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: p.color ?? '#94a3b8' }}
+                    />
+                    <span
+                      className={cn(
+                        'truncate',
+                        projectFilter === p.id
+                          ? 'font-medium text-slate-900 dark:text-white'
+                          : 'text-slate-600 dark:text-slate-300',
+                      )}
+                    >
+                      {p.name}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteProject(p.id, p.name)}
+                    aria-label={`Delete ${p.name}`}
+                    className="ml-1 text-slate-400 opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100 dark:hover:text-red-400"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {projects.length === 0 && (
+                <p className="px-1 text-xs text-slate-400">No projects yet.</p>
+              )}
+            </div>
+          </div>
         </aside>
 
         <section className="min-w-0">
@@ -188,18 +296,22 @@ export function TasksPage() {
             <p className="text-sm text-red-600">Failed to load tasks.</p>
           ) : tasks.length === 0 ? (
             <EmptyState
-              title={search || tagFilter || statusFilter !== 'all' ? 'No matching tasks' : 'No tasks yet'}
+              title={
+                search || tagFilter || projectFilter || statusFilter !== 'all'
+                  ? 'No matching tasks'
+                  : 'No tasks yet'
+              }
               description={
-                search || tagFilter || statusFilter !== 'all'
+                search || tagFilter || projectFilter || statusFilter !== 'all'
                   ? 'Try clearing your filters.'
                   : 'Create your first task to get started.'
               }
               action={<Button onClick={() => setCreateOpen(true)}>Create task</Button>}
             />
           ) : view === 'board' ? (
-            <TaskBoard tasks={tasks} />
+            <TaskBoard tasks={tasks} projects={projects} />
           ) : (
-            <TaskList tasks={tasks} />
+            <TaskList tasks={tasks} projects={projects} />
           )}
         </section>
       </div>

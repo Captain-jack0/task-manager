@@ -21,6 +21,19 @@ export interface WorkspaceCreateInput {
   name: string;
 }
 
+export interface Project {
+  id: string;
+  workspace_id: string;
+  name: string;
+  color: string | null;
+  created_at: string;
+}
+
+export interface ProjectCreateInput {
+  name: string;
+  color?: string | null;
+}
+
 export interface Tag {
   id: string;
   user_id: string;
@@ -40,6 +53,7 @@ export interface Task {
   due_date: string | null;
   estimated_minutes: number | null;
   energy_level: TaskEnergy | null;
+  project_id: string | null;
   snooze_count: number;
   github_issue_url: string | null;
   github_issue_number: number | null;
@@ -79,6 +93,7 @@ export interface TaskCreateInput {
   due_date?: string | null;
   estimated_minutes?: number | null;
   energy_level?: TaskEnergy | null;
+  project_id?: string | null;
   tag_ids?: string[];
 }
 
@@ -112,6 +127,7 @@ export interface TaskListFilters {
   workspace_id?: string;
   status?: TaskStatus;
   tag_id?: string;
+  project_id?: string;
   search?: string;
   page?: number;
   limit?: number;
