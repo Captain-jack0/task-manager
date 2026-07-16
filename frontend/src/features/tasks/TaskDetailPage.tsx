@@ -10,18 +10,9 @@ import type { TaskStatus } from '@/types/api';
 import { useGithubStatus } from '@/features/integrations/useGithub';
 import { TaskForm } from './TaskForm';
 import type { TaskFormValues } from './schemas';
+import { STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 import { useCreateGithubIssue, useDeleteTask, useTask, useUpdateTask } from './useTasks';
 
-const STATUS_STYLE: Record<TaskStatus, string> = {
-  todo: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-};
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  todo: 'To do',
-  in_progress: 'In progress',
-  done: 'Done',
-};
 const PRIORITY_DOT: Record<'low' | 'medium' | 'high', string> = {
   low: 'bg-slate-400',
   medium: 'bg-amber-500',
@@ -50,7 +41,7 @@ export function TaskDetailPage() {
     );
 
   const task = taskQuery.data;
-  const overdue = task.status !== 'done' && isOverdue(task.due_date);
+  const overdue = !isCompleted(task.status) && isOverdue(task.due_date);
 
   const handleSave = (values: TaskFormValues) => {
     updateMutation.mutate(
@@ -139,7 +130,7 @@ export function TaskDetailPage() {
       ) : (
         <article className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_STYLE[task.status])}>
+            <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', STATUS_BADGE[task.status])}>
               {STATUS_LABEL[task.status]}
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
@@ -148,7 +139,7 @@ export function TaskDetailPage() {
             </span>
           </div>
 
-          <h1 className={cn('mt-3 text-xl font-semibold tracking-tight', task.status === 'done' && 'line-through')}>
+          <h1 className={cn('mt-3 text-xl font-semibold tracking-tight', isCompleted(task.status) && 'line-through')}>
             {task.title}
           </h1>
 
@@ -209,7 +200,7 @@ export function TaskDetailPage() {
           <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
             <span className="mb-2 block text-xs font-medium text-slate-500">Set status</span>
             <div className="flex flex-wrap gap-1.5">
-              {(['todo', 'in_progress', 'done'] as TaskStatus[]).map((s) => (
+              {STATUS_ORDER.map((s) => (
                 <button
                   key={s}
                   type="button"

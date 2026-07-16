@@ -43,10 +43,12 @@ async def list_tasks(
 async def list_active_tasks(
     session: AsyncSession, *, workspace_id: UUID
 ) -> Sequence[Task]:
-    """Not-done tasks in a workspace — candidate pool for the suggestion engine."""
+    """Actionable tasks in a workspace — candidate pool for the suggestion
+    engine. Excludes done/closed (finished) and blocked (can't start now)."""
     result = await session.execute(
         select(Task).where(
-            Task.workspace_id == workspace_id, Task.status != TaskStatus.DONE
+            Task.workspace_id == workspace_id,
+            Task.status.not_in([TaskStatus.DONE, TaskStatus.CLOSED, TaskStatus.BLOCKED]),
         )
     )
     return result.scalars().unique().all()

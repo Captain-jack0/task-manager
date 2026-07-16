@@ -1,4 +1,4 @@
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done' | 'closed';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEnergy = 'low' | 'medium' | 'high';
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'guest';

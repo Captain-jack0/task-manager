@@ -2,9 +2,10 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import type { Task, TaskPriority, TaskStatus } from '@/types/api';
+import type { Task, TaskPriority } from '@/types/api';
 import { TagPicker } from '@/features/tags/TagPicker';
 import { taskFormSchema, type TaskFormValues } from './schemas';
+import { STATUS_LABEL, STATUS_ORDER } from './status';
 
 interface Props {
   initial?: Task;
@@ -13,11 +14,7 @@ interface Props {
   isSubmitting?: boolean;
 }
 
-const STATUSES: { value: TaskStatus; label: string }[] = [
-  { value: 'todo', label: 'To do' },
-  { value: 'in_progress', label: 'In progress' },
-  { value: 'done', label: 'Done' },
-];
+const STATUSES = STATUS_ORDER.map((value) => ({ value, label: STATUS_LABEL[value] }));
 const PRIORITIES: { value: TaskPriority; label: string }[] = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },

@@ -6,12 +6,9 @@ import type { Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { cn } from '@/lib/cn';
 import { useUpdateTask } from './useTasks';
+import { STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 
-const COLUMNS: { status: TaskStatus; label: string }[] = [
-  { status: 'todo', label: 'To do' },
-  { status: 'in_progress', label: 'In progress' },
-  { status: 'done', label: 'Done' },
-];
+const COLUMNS = STATUS_ORDER.map((status) => ({ status, label: STATUS_LABEL[status] }));
 
 const PRIORITY_DOT: Record<Task['priority'], string> = {
   low: 'bg-slate-400',
@@ -34,7 +31,7 @@ export function TaskBoard({ tasks }: { tasks: Task[] }) {
   };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="flex gap-4 overflow-x-auto pb-2">
       {COLUMNS.map((col) => {
         const items = tasks.filter((t) => t.status === col.status);
         return (
@@ -53,7 +50,7 @@ export function TaskBoard({ tasks }: { tasks: Task[] }) {
               setOverStatus(null);
             }}
             className={cn(
-              'rounded-2xl border p-3 transition-colors',
+              'flex min-w-[240px] flex-1 flex-col rounded-2xl border p-3 transition-colors',
               overStatus === col.status
                 ? 'border-slate-400 bg-slate-100/70 dark:border-slate-600 dark:bg-slate-800/50'
                 : 'border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40',
@@ -83,7 +80,7 @@ export function TaskBoard({ tasks }: { tasks: Task[] }) {
                   className={cn(
                     'cursor-grab rounded-xl border border-slate-200 bg-white p-3 transition-shadow hover:shadow-sm active:cursor-grabbing dark:border-slate-800 dark:bg-slate-900',
                     dragId === task.id && 'opacity-50',
-                    task.status === 'done' && 'opacity-60',
+                    isCompleted(task.status) && 'opacity-60',
                   )}
                   data-testid="board-card"
                 >
@@ -92,7 +89,7 @@ export function TaskBoard({ tasks }: { tasks: Task[] }) {
                       to={`/tasks/${task.id}`}
                       className={cn(
                         'text-sm font-medium leading-snug tracking-tight hover:text-slate-500 dark:hover:text-slate-400',
-                        task.status === 'done' && 'line-through',
+                        isCompleted(task.status) && 'line-through',
                       )}
                     >
                       {task.title}

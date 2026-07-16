@@ -15,13 +15,12 @@ import { TaskBoard } from './TaskBoard';
 import { TaskForm } from './TaskForm';
 import { TaskList } from './TaskList';
 import type { TaskFormValues } from './schemas';
+import { STATUS_LABEL, STATUS_ORDER } from './status';
 import { useCreateTask, useTasks } from './useTasks';
 
 const STATUS_OPTIONS: { value: TaskStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'todo', label: 'To do' },
-  { value: 'in_progress', label: 'In progress' },
-  { value: 'done', label: 'Done' },
+  ...STATUS_ORDER.map((value) => ({ value, label: STATUS_LABEL[value] })),
 ];
 
 export function TasksPage() {

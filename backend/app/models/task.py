@@ -20,7 +20,9 @@ if TYPE_CHECKING:
 class TaskStatus(str, Enum):
     TODO = "todo"
     IN_PROGRESS = "in_progress"
+    BLOCKED = "blocked"
     DONE = "done"
+    CLOSED = "closed"
 
 
 class TaskPriority(str, Enum):

@@ -3,17 +3,12 @@ import type { Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
+import { NEXT_STATUS, STATUS_LABEL, isCompleted } from './status';
 
 const PRIORITY_DOT: Record<Task['priority'], string> = {
   low: 'bg-slate-400',
   medium: 'bg-amber-500',
   high: 'bg-red-500',
-};
-
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  todo: 'To do',
-  in_progress: 'In progress',
-  done: 'Done',
 };
 
 interface Props {
@@ -24,15 +19,15 @@ interface Props {
 }
 
 export function TaskCard({ task, onToggleStatus, onSnooze, onDelete }: Props) {
-  const overdue = task.status !== 'done' && isOverdue(task.due_date);
-  const nextStatus: TaskStatus =
-    task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'todo';
+  const done = isCompleted(task.status);
+  const overdue = !done && isOverdue(task.due_date);
+  const nextStatus = NEXT_STATUS[task.status];
 
   return (
     <div
       className={cn(
         'group flex flex-col rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700',
-        task.status === 'done' && 'opacity-60',
+        done && 'opacity-60',
       )}
       data-testid="task-card"
     >
@@ -41,7 +36,7 @@ export function TaskCard({ task, onToggleStatus, onSnooze, onDelete }: Props) {
           to={`/tasks/${task.id}`}
           className={cn(
             'block text-sm font-semibold leading-snug tracking-tight hover:text-slate-500 dark:hover:text-slate-400',
-            task.status === 'done' && 'line-through',
+            done && 'line-through',
           )}
         >
           {task.title}
@@ -94,7 +89,7 @@ export function TaskCard({ task, onToggleStatus, onSnooze, onDelete }: Props) {
           Move to {STATUS_LABEL[nextStatus]} →
         </button>
         <div className="flex items-center gap-3">
-          {task.status !== 'done' && (
+          {!done && (
             <button
               type="button"
               onClick={onSnooze}
