@@ -12,6 +12,7 @@ import { useCreateProject, useDeleteProject, useProjects } from '@/features/proj
 import { useMembers } from '@/features/workspaces/useMembers';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { cn } from '@/lib/cn';
+import { QuickAdd } from './QuickAdd';
 import { SuggestPanel } from './SuggestPanel';
 import { TaskBoard } from './TaskBoard';
 import { TaskForm } from './TaskForm';
@@ -129,6 +130,8 @@ export function TasksPage() {
         </div>
         <Button onClick={() => setCreateOpen(true)}>+ New task</Button>
       </div>
+
+      <QuickAdd />
 
       <SuggestPanel workspaceId={workspaceId} />
 
