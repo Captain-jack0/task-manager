@@ -5,7 +5,7 @@ import { useWorkspaceStore } from '../../store/workspaceStore';
 import type { Workspace } from '../../types/api';
 
 export function useWorkspaces() {
-  const query = useQuery({
+  const query = useQuery<Workspace[]>({
     queryKey: ['workspaces'],
     queryFn: () => workspacesApi.list(),
     staleTime: 5 * 60_000,

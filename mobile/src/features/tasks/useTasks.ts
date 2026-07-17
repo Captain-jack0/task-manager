@@ -3,29 +3,32 @@ import { tasksApi } from '../../api/tasks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import type {
   SuggestParams,
+  SuggestResponse,
+  Task,
   TaskCreateInput,
   TaskListFilters,
+  TaskListResponse,
   TaskUpdateInput,
 } from '../../types/api';
 
 export const TASKS_KEY = 'tasks';
 
 export function useTasks(filters: TaskListFilters = {}) {
-  return useQuery({
+  return useQuery<TaskListResponse>({
     queryKey: [TASKS_KEY, filters],
     queryFn: () => tasksApi.list(filters),
   });
 }
 
 export function useTask(id: string) {
-  return useQuery({
+  return useQuery<Task>({
     queryKey: [TASKS_KEY, 'detail', id],
     queryFn: () => tasksApi.get(id),
   });
 }
 
 export function useSuggest(params: SuggestParams, enabled: boolean) {
-  return useQuery({
+  return useQuery<SuggestResponse>({
     queryKey: ['suggest', params],
     queryFn: () => tasksApi.suggest(params),
     enabled,

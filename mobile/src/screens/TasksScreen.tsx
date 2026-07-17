@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -7,75 +8,192 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
-import { AppButton, Badge, formatDate } from '../components/ui';
+import { AppModal } from '../components/AppModal';
+import { AppButton, Badge, Field, formatDate } from '../components/ui';
 import { NEXT_STATUS, STATUS_COLOR, STATUS_LABEL, isCompleted } from '../features/tasks/status';
 import { useSnooze, useTasks, useUpdateTask } from '../features/tasks/useTasks';
+import { useCreateProject, useProjects } from '../features/projects/useProjects';
 import { useWorkspaces } from '../features/workspaces/useWorkspaces';
 import type { RootStackParamList } from '../navigation';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { colors, priorityColor, spacing } from '../theme';
-import type { Task, Workspace } from '../types/api';
+import type { Project, Task, TaskStatus, Workspace } from '../types/api';
+
+const STATUS_FILTERS: { label: string; value: 'all' | TaskStatus }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'To do', value: 'todo' },
+  { label: 'In progress', value: 'in_progress' },
+  { label: 'Blocked', value: 'blocked' },
+  { label: 'Done', value: 'done' },
+  { label: 'Closed', value: 'closed' },
+];
+
+function Chip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export function TasksScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const setWorkspace = useWorkspaceStore((s) => s.setCurrentWorkspace);
   const { data: workspaces } = useWorkspaces();
-  const tasksQuery = useTasks({ workspace_id: workspaceId ?? undefined, limit: 100 });
+  const { data: projects } = useProjects();
+  const tasksQuery = useTasks({ workspace_id: workspaceId ?? undefined, limit: 200 });
   const tasks = tasksQuery.data?.data ?? [];
 
-  return (
-    <View style={styles.screen}>
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>('all');
+  const [projectFilter, setProjectFilter] = useState<'all' | string>('all');
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const createProject = useCreateProject();
+
+  const projectNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    (projects ?? []).forEach((p: Project) => {
+      map[p.id] = p.name;
+    });
+    return map;
+  }, [projects]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return tasks.filter(
+      (t) =>
+        (statusFilter === 'all' || t.status === statusFilter) &&
+        (projectFilter === 'all' || t.project_id === projectFilter) &&
+        (q === '' || t.title.toLowerCase().includes(q)),
+    );
+  }, [tasks, search, statusFilter, projectFilter]);
+
+  const submitNewProject = () => {
+    const name = newProjectName.trim();
+    if (!name) return;
+    createProject.mutate(
+      { name },
+      {
+        onSuccess: (p) => {
+          setProjectFilter(p.id);
+          setNewProjectName('');
+          setShowNewProject(false);
+        },
+      },
+    );
+  };
+
+  const header = (
+    <View style={styles.header}>
       {workspaces && workspaces.length > 1 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.wsBar}
-          contentContainerStyle={styles.wsBarContent}
-        >
-          {workspaces.map((w: Workspace) => {
-            const active = w.id === workspaceId;
-            return (
-              <Pressable
-                key={w.id}
-                onPress={() => setWorkspace(w.id)}
-                style={[styles.wsChip, active && styles.wsChipActive]}
-              >
-                <Text style={[styles.wsChipText, active && styles.wsChipTextActive]}>
-                  {w.name}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {workspaces.map((w: Workspace) => (
+            <Chip
+              key={w.id}
+              label={w.name}
+              active={w.id === workspaceId}
+              onPress={() => setWorkspace(w.id)}
+            />
+          ))}
         </ScrollView>
       )}
 
+      <TextInput
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search tasks"
+        placeholderTextColor={colors.faint}
+        style={styles.search}
+        autoCapitalize="none"
+        returnKeyType="search"
+      />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+        {STATUS_FILTERS.map((s) => (
+          <Chip
+            key={s.value}
+            label={s.label}
+            active={statusFilter === s.value}
+            onPress={() => setStatusFilter(s.value)}
+          />
+        ))}
+      </ScrollView>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+        <Chip label="All projects" active={projectFilter === 'all'} onPress={() => setProjectFilter('all')} />
+        {(projects ?? []).map((p: Project) => (
+          <Chip
+            key={p.id}
+            label={p.name}
+            active={projectFilter === p.id}
+            onPress={() => setProjectFilter(p.id)}
+          />
+        ))}
+        <Chip label="＋ New" active={false} onPress={() => setShowNewProject(true)} />
+      </ScrollView>
+    </View>
+  );
+
+  return (
+    <View style={styles.screen}>
       <FlatList
-        data={tasks}
+        data={filtered}
         keyExtractor={(t) => t.id}
+        ListHeaderComponent={header}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
-          <TaskCard task={item} onPress={() => nav.navigate('TaskDetail', { id: item.id })} />
+          <TaskCard
+            task={item}
+            projectName={item.project_id ? projectNameById[item.project_id] : undefined}
+            onPress={() => nav.navigate('TaskDetail', { id: item.id })}
+          />
         )}
         refreshControl={
-          <RefreshControl
-            refreshing={tasksQuery.isRefetching}
-            onRefresh={() => tasksQuery.refetch()}
-          />
+          <RefreshControl refreshing={tasksQuery.isRefetching} onRefresh={() => tasksQuery.refetch()} />
         }
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {tasksQuery.isLoading ? 'Loading…' : 'No tasks yet. Add one from the New tab.'}
+            {tasksQuery.isLoading ? 'Loading…' : 'No tasks match. Add one from the New tab.'}
           </Text>
         }
       />
+
+      <AppModal visible={showNewProject} onClose={() => setShowNewProject(false)} title="New project">
+        <Field
+          label="Name"
+          value={newProjectName}
+          onChangeText={setNewProjectName}
+          placeholder="e.g. Website redesign"
+          autoFocus
+        />
+        <AppButton title="Create project" onPress={submitNewProject} loading={createProject.isPending} />
+      </AppModal>
     </View>
   );
 }
 
-function TaskCard({ task, onPress }: { task: Task; onPress: () => void }) {
+function TaskCard({
+  task,
+  projectName,
+  onPress,
+}: {
+  task: Task;
+  projectName?: string;
+  onPress: () => void;
+}) {
   const update = useUpdateTask();
   const snooze = useSnooze();
   const next = NEXT_STATUS[task.status];
@@ -87,6 +205,7 @@ function TaskCard({ task, onPress }: { task: Task; onPress: () => void }) {
       <View style={styles.badgeRow}>
         <Badge label={STATUS_LABEL[task.status]} color={STATUS_COLOR[task.status]} />
         <Badge label={task.priority} color={priorityColor[task.priority]} />
+        {projectName && <Badge label={projectName} color={colors.primary} />}
         {task.due_date && <Badge label={`due ${formatDate(task.due_date)}`} color={colors.muted} />}
         {task.estimated_minutes != null && (
           <Badge label={`~${task.estimated_minutes}m`} color={colors.faint} />
@@ -122,9 +241,9 @@ function TaskCard({ task, onPress }: { task: Task; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  wsBar: { flexGrow: 0, borderBottomWidth: 1, borderBottomColor: colors.border },
-  wsBarContent: { padding: 12, gap: 8 },
-  wsChip: {
+  header: { gap: 10, paddingBottom: 6 },
+  chipRow: { gap: 8, paddingVertical: 2 },
+  chip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 999,
@@ -132,9 +251,19 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.card,
   },
-  wsChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  wsChipText: { fontSize: 13, fontWeight: '500', color: colors.muted },
-  wsChipTextActive: { color: colors.primaryText },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, fontWeight: '500', color: colors.muted },
+  chipTextActive: { color: colors.primaryText },
+  search: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: colors.text,
+    backgroundColor: colors.card,
+  },
   listContent: { padding: spacing, gap: 12 },
   card: {
     backgroundColor: colors.card,

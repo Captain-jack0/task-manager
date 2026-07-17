@@ -5,9 +5,11 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { extractErrorMessage } from '../api/client';
 import { AppButton, Field, Segmented } from '../components/ui';
 import { useCreateTask } from '../features/tasks/useTasks';
+import { dueToIso } from '../features/tasks/due';
+import { useProjects } from '../features/projects/useProjects';
 import type { TabParamList } from '../navigation';
 import { colors, spacing } from '../theme';
-import type { TaskEnergy, TaskPriority } from '../types/api';
+import type { Project, TaskEnergy, TaskPriority } from '../types/api';
 
 const PRIORITY_OPTS = [
   { label: 'Low', value: 'low' as TaskPriority },
@@ -32,24 +34,22 @@ const DUE_OPTS = [
   { label: 'Next week', value: 'week' },
 ];
 
-function dueToIso(value: string): string | null {
-  if (value === 'none') return null;
-  const d = new Date();
-  d.setHours(17, 0, 0, 0);
-  if (value === 'tomorrow') d.setDate(d.getDate() + 1);
-  if (value === 'week') d.setDate(d.getDate() + 7);
-  return d.toISOString();
-}
-
 export function NewTaskScreen() {
   const nav = useNavigation<BottomTabNavigationProp<TabParamList>>();
   const create = useCreateTask();
+  const { data: projects } = useProjects();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [energy, setEnergy] = useState<TaskEnergy | null>(null);
   const [minutes, setMinutes] = useState<string | null>(null);
   const [due, setDue] = useState('none');
+  const [projectId, setProjectId] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const projectOptions = [
+    { label: 'None', value: '' },
+    ...(projects ?? []).map((p: Project) => ({ label: p.name, value: p.id })),
+  ];
 
   const submit = () => {
     if (!title.trim()) {
@@ -64,6 +64,7 @@ export function NewTaskScreen() {
         energy_level: energy ?? undefined,
         estimated_minutes: minutes ? Number(minutes) : undefined,
         due_date: dueToIso(due),
+        project_id: projectId || null,
       },
       {
         onSuccess: () => {
@@ -72,6 +73,7 @@ export function NewTaskScreen() {
           setEnergy(null);
           setMinutes(null);
           setDue('none');
+          setProjectId('');
           nav.navigate('Tasks');
         },
         onError: (err) => setError(extractErrorMessage(err, 'Could not create task')),
@@ -111,6 +113,13 @@ export function NewTaskScreen() {
           <Text style={styles.label}>Due</Text>
           <Segmented options={DUE_OPTS} value={due} onChange={setDue} />
         </View>
+
+        {projects && projects.length > 0 && (
+          <View style={{ gap: 8 }}>
+            <Text style={styles.label}>Project</Text>
+            <Segmented options={projectOptions} value={projectId} onChange={setProjectId} />
+          </View>
+        )}
 
         {error && <Text style={styles.error}>{error}</Text>}
 

@@ -26,6 +26,19 @@ export interface Tag {
   created_at: string;
 }
 
+export interface Project {
+  id: string;
+  workspace_id: string;
+  name: string;
+  color: string | null;
+  created_at: string;
+}
+
+export interface ProjectCreateInput {
+  name: string;
+  color?: string | null;
+}
+
 export interface Task {
   id: string;
   user_id: string;
@@ -68,6 +81,7 @@ export interface TaskCreateInput {
   due_date?: string | null;
   estimated_minutes?: number | null;
   energy_level?: TaskEnergy | null;
+  project_id?: string | null;
 }
 
 export type TaskUpdateInput = Partial<TaskCreateInput>;
@@ -75,6 +89,7 @@ export type TaskUpdateInput = Partial<TaskCreateInput>;
 export interface TaskListFilters {
   workspace_id?: string;
   status?: TaskStatus;
+  project_id?: string;
   search?: string;
   page?: number;
   limit?: number;
