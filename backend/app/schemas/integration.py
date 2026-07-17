@@ -33,3 +33,8 @@ class GithubConnectRequest(BaseModel):
 class GithubStatusOut(BaseModel):
     connected: bool
     repo: str | None = None
+
+
+class GithubRepoOut(BaseModel):
+    name: str
+    full_name: str

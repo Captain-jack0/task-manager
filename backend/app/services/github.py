@@ -56,6 +56,28 @@ async def create_issue(token: str, repo: str, *, title: str, body: str) -> dict:
     )
 
 
+async def list_repos(token: str) -> list[dict]:
+    """List repositories the token can access (most-recently-updated first)."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        try:
+            resp = await client.get(
+                f"{GITHUB_API}/user/repos",
+                headers=_headers(token),
+                params={"per_page": 100, "sort": "updated"},
+            )
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY, detail="Could not reach GitHub"
+            ) from exc
+    if resp.status_code != 200:
+        _raise_for_access(resp.status_code)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"GitHub returned an unexpected status ({resp.status_code})",
+        )
+    return [{"name": r["name"], "full_name": r["full_name"]} for r in resp.json()]
+
+
 def _raise_for_access(code: int) -> None:
     if code in (401, 403):
         raise HTTPException(

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.crypto import decrypt_secret
 from app.core.rate_limit import limiter
 from app.repositories import integration_repo
-from app.schemas.integration import GithubConnectRequest, GithubStatusOut
+from app.schemas.integration import GithubConnectRequest, GithubRepoOut, GithubStatusOut
 from app.services import github
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
@@ -37,3 +38,17 @@ async def connect_github(
 @router.delete("/github", status_code=status.HTTP_204_NO_CONTENT)
 async def disconnect_github(current_user: CurrentUser, session: SessionDep) -> None:
     await integration_repo.delete_github(session, user_id=current_user.id)
+
+
+@router.get("/github/repos", response_model=list[GithubRepoOut])
+@limiter.limit("20/minute")
+async def github_repos(
+    request: Request, current_user: CurrentUser, session: SessionDep
+) -> list[GithubRepoOut]:
+    integration = await integration_repo.get_github(session, user_id=current_user.id)
+    if integration is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub is not connected"
+        )
+    repos = await github.list_repos(decrypt_secret(integration.token))
+    return [GithubRepoOut(**r) for r in repos]

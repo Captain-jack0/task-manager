@@ -9,6 +9,7 @@ import type { TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { useTags, useDeleteTag } from '@/features/tags/useTags';
 import { useCreateProject, useDeleteProject, useProjects } from '@/features/projects/useProjects';
+import { useGithubRepos, useGithubStatus } from '@/features/integrations/useGithub';
 import { useMembers } from '@/features/workspaces/useMembers';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { cn } from '@/lib/cn';
@@ -34,6 +35,8 @@ export function TasksPage() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [view, setView] = useState<'list' | 'board'>('list');
+  const [importOpen, setImportOpen] = useState(false);
+  const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
 
   const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? undefined;
 
@@ -43,6 +46,11 @@ export function TasksPage() {
   const { data: memberList } = useMembers(workspaceId);
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
+  const { data: githubStatus } = useGithubStatus();
+  const githubConnected = githubStatus?.connected ?? false;
+  const { data: githubRepos, isLoading: reposLoading } = useGithubRepos(
+    importOpen && githubConnected,
+  );
   const tasksQuery = useTasks({
     workspace_id: workspaceId,
     // The board shows every status as a column, so it ignores the status filter.
@@ -115,8 +123,33 @@ export function TasksPage() {
     });
   };
 
+  const toggleRepo = (name: string) => {
+    setSelectedRepos((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const handleImportRepos = async () => {
+    const names = [...selectedRepos];
+    if (names.length === 0) return;
+    try {
+      for (const name of names) {
+        await createProject.mutateAsync({ name });
+      }
+      toast.success(`Imported ${names.length} project${names.length === 1 ? '' : 's'}`);
+      setSelectedRepos(new Set());
+      setImportOpen(false);
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Could not import projects'));
+    }
+  };
+
   const projects = projectList ?? [];
   const members = memberList ?? [];
+  const existingProjectNames = new Set(projects.map((p) => p.name.toLowerCase()));
   const tasks = tasksQuery.data?.data ?? [];
   const total = tasksQuery.data?.total ?? tasks.length;
 
@@ -202,15 +235,27 @@ export function TasksPage() {
               <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Projects
               </h2>
-              <button
-                type="button"
-                onClick={handleCreateProject}
-                title="New project"
-                aria-label="New project"
-                className="text-base leading-none text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
-              >
-                +
-              </button>
+              <div className="flex items-center gap-2">
+                {githubConnected && (
+                  <button
+                    type="button"
+                    onClick={() => setImportOpen(true)}
+                    title="Import projects from your GitHub repositories"
+                    className="text-xs text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
+                  >
+                    GitHub
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCreateProject}
+                  title="New project"
+                  aria-label="New project"
+                  className="text-base leading-none text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
+                >
+                  +
+                </button>
+              </div>
             </div>
             <div className="flex flex-col gap-0.5">
               <button
@@ -332,6 +377,63 @@ export function TasksPage() {
           onCancel={() => setCreateOpen(false)}
           isSubmitting={createTask.isPending}
         />
+      </Modal>
+
+      <Modal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Import projects from GitHub"
+      >
+        <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+          Pick repositories to add as projects. They become normal projects you can assign tasks
+          to and filter by.
+        </p>
+        {reposLoading ? (
+          <p className="text-sm text-slate-500">Loading repositories…</p>
+        ) : githubRepos && githubRepos.length > 0 ? (
+          <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
+            {githubRepos.map((r) => {
+              const already = existingProjectNames.has(r.name.toLowerCase());
+              return (
+                <label
+                  key={r.full_name}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm',
+                    already
+                      ? 'opacity-50'
+                      : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800',
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={already}
+                    checked={already || selectedRepos.has(r.name)}
+                    onChange={() => toggleRepo(r.name)}
+                  />
+                  <span className="truncate">{r.full_name}</span>
+                  {already && <span className="ml-auto text-xs text-slate-400">added</span>}
+                </label>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">
+            No repositories found for this token. A fine-grained token only lists the repos it was
+            granted; a classic token needs the <span className="font-medium">repo</span> scope.
+          </p>
+        )}
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setImportOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleImportRepos}
+            isLoading={createProject.isPending}
+            disabled={selectedRepos.size === 0}
+          >
+            Import{selectedRepos.size > 0 ? ` ${selectedRepos.size}` : ''}
+          </Button>
+        </div>
       </Modal>
     </div>
   );

@@ -12,6 +12,15 @@ export function useGithubStatus() {
   });
 }
 
+export function useGithubRepos(enabled: boolean) {
+  return useQuery({
+    queryKey: [...GITHUB_KEY, 'repos'],
+    queryFn: () => integrationsApi.listRepos(),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useConnectGithub() {
   const qc = useQueryClient();
   return useMutation({
