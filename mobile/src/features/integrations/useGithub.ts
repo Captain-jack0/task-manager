@@ -1,12 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { integrationsApi } from '../../api/integrations';
 import { tasksApi } from '../../api/tasks';
-import type { GithubStatus } from '../../types/api';
+import type { GithubRepo, GithubStatus } from '../../types/api';
 
 export function useGithubStatus() {
   return useQuery<GithubStatus>({
     queryKey: ['github', 'status'],
     queryFn: () => integrationsApi.getGithub(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useGithubRepos(enabled: boolean) {
+  return useQuery<GithubRepo[]>({
+    queryKey: ['github', 'repos'],
+    queryFn: () => integrationsApi.listRepos(),
+    enabled,
     staleTime: 5 * 60_000,
   });
 }

@@ -20,6 +20,8 @@ import { BoardView } from '../features/tasks/BoardView';
 import { dueToIso } from '../features/tasks/due';
 import { useSnooze, useTasks, useUpdateTask } from '../features/tasks/useTasks';
 import { useCreateProject, useProjects } from '../features/projects/useProjects';
+import { GithubImportModal } from '../features/projects/GithubImportModal';
+import { useGithubStatus } from '../features/integrations/useGithub';
 import { useWorkspaces } from '../features/workspaces/useWorkspaces';
 import { useMembers } from '../features/workspaces/useMembers';
 import type { RootStackParamList } from '../navigation';
@@ -68,7 +70,9 @@ export function TasksScreen() {
   const [view, setView] = useState<'list' | 'board'>('list');
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [showImport, setShowImport] = useState(false);
   const createProject = useCreateProject();
+  const { data: githubStatus } = useGithubStatus();
 
   const projectNameById = useMemo(() => {
     const map: Record<string, string> = {};
@@ -160,6 +164,9 @@ export function TasksScreen() {
           />
         ))}
         <Chip label="＋ New" active={false} onPress={() => setShowNewProject(true)} />
+        {githubStatus?.connected && (
+          <Chip label="⤓ GitHub" active={false} onPress={() => setShowImport(true)} />
+        )}
       </ScrollView>
 
       <View style={styles.viewToggle}>
@@ -214,6 +221,12 @@ export function TasksScreen() {
         />
         <AppButton title="Create project" onPress={submitNewProject} loading={createProject.isPending} />
       </AppModal>
+
+      <GithubImportModal
+        visible={showImport}
+        onClose={() => setShowImport(false)}
+        existingNames={new Set((projects ?? []).map((p: Project) => p.name.toLowerCase()))}
+      />
     </View>
   );
 }
