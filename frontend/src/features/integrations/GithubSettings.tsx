@@ -64,13 +64,22 @@ export function GithubSettings() {
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Paste a GitHub personal access token with <span className="font-medium">issues:
-              write</span> access and the target repository. The token is stored only on the
-              server and never shown again.
+              Paste a GitHub personal access token with <span className="font-medium">Issues:
+              write</span> access to the repo, plus the target repository. The token is stored
+              only on the server and never shown again.
             </p>
+            <a
+              href="https://github.com/settings/personal-access-tokens"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block text-sm font-medium text-slate-900 underline underline-offset-2 dark:text-white"
+            >
+              Create a token on GitHub →
+            </a>
             <Input
               label="Repository (owner/repo)"
               placeholder="octocat/hello-world"
+              hint="Just owner/repo — you can also paste the full repo URL."
               value={repo}
               onChange={(e) => setRepo(e.target.value)}
             />

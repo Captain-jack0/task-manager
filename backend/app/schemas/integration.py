@@ -20,6 +20,11 @@ class GithubConnectRequest(BaseModel):
     @classmethod
     def validate_repo(cls, v: str) -> str:
         v = v.strip()
+        # Be forgiving: accept a pasted repo URL (https or ssh) or a trailing
+        # ".git"/slash and normalise down to "owner/repo" before validating.
+        v = re.sub(r"^https?://github\.com/", "", v, flags=re.IGNORECASE)
+        v = re.sub(r"^git@github\.com:", "", v, flags=re.IGNORECASE)
+        v = v.removesuffix(".git").strip("/")
         if not _REPO_RE.fullmatch(v):
             raise ValueError("repo must be in the form owner/repo")
         return v

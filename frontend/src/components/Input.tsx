@@ -4,10 +4,11 @@ import { cn } from '@/lib/cn';
 interface Props extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  hint?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, Props>(
-  ({ label, error, className, id, ...rest }, ref) => {
+  ({ label, error, hint, className, id, ...rest }, ref) => {
     const inputId = id ?? rest.name;
     return (
       <div className="flex flex-col gap-1.5">
@@ -29,7 +30,11 @@ export const Input = forwardRef<HTMLInputElement, Props>(
             className,
           )}
         />
-        {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        {error ? (
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        ) : (
+          hint && <p className="text-xs text-slate-400 dark:text-slate-500">{hint}</p>
+        )}
       </div>
     );
   },
