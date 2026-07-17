@@ -84,14 +84,23 @@ export function TaskCard({
         </p>
       )}
 
-      {task.due_date ? (
-        <p className={cn('mt-2 text-xs', overdue ? 'text-red-600 dark:text-red-400' : 'text-slate-400')}>
-          Due {formatDate(task.due_date)}{overdue && ' · overdue'}
-        </p>
-      ) : (
-        !done && (
+      {done
+        ? task.due_date && (
+            <p className={cn('mt-2 text-xs', overdue ? 'text-red-600 dark:text-red-400' : 'text-slate-400')}>
+              Due {formatDate(task.due_date)}
+            </p>
+          )
+        : (
+          // Open tasks: show the due date (if any) plus one-tap (re)schedule shortcuts.
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
-            <span title="Add a due date — also shows it on your calendar feed">📅 Schedule:</span>
+            {task.due_date && (
+              <span className={cn('font-medium', overdue ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-300')}>
+                Due {formatDate(task.due_date)}{overdue && ' · overdue'}
+              </span>
+            )}
+            <span title="Set a due date — also shows the task on your calendar feed">
+              {task.due_date ? '· Reschedule:' : '📅 Schedule:'}
+            </span>
             {[
               { label: 'Today', days: 0 },
               { label: 'Tomorrow', days: 1 },
@@ -114,8 +123,7 @@ export function TaskCard({
               className="ml-1 cursor-pointer rounded border border-slate-200 bg-transparent px-1 py-0.5 text-slate-500 dark:border-slate-700 dark:text-slate-400"
             />
           </div>
-        )
-      )}
+        )}
 
       {(task.estimated_minutes != null || task.energy_level || task.snooze_count > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">

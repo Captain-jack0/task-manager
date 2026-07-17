@@ -256,9 +256,9 @@ function TaskCard({
         {stuck && <Badge label={`snoozed ${task.snooze_count}×`} color={colors.warnText} />}
       </View>
 
-      {!isCompleted(task.status) && !task.due_date && (
+      {!isCompleted(task.status) && (
         <View style={styles.scheduleRow}>
-          <Text style={styles.scheduleLabel}>📅 Schedule:</Text>
+          <Text style={styles.scheduleLabel}>{task.due_date ? 'Reschedule:' : '📅 Schedule:'}</Text>
           {(
             [
               { label: 'Today', value: 'today' },
