@@ -7,5 +7,6 @@ export type RootStackParamList = {
 export type TabParamList = {
   Tasks: undefined;
   Now: undefined;
+  Plan: undefined;
   New: undefined;
 };

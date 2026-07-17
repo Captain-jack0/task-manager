@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { NewTaskScreen } from './src/screens/NewTaskScreen';
 import { NowScreen } from './src/screens/NowScreen';
+import { PlanScreen } from './src/screens/PlanScreen';
 import { TaskDetailScreen } from './src/screens/TaskDetailScreen';
 import { TasksScreen } from './src/screens/TasksScreen';
 import type { RootStackParamList, TabParamList } from './src/navigation';
@@ -42,6 +43,11 @@ function TabsNavigator() {
       <Tabs.Screen
         name="Now"
         component={NowScreen}
+        options={{ tabBarIcon: ({ color }) => <TabDot color={color} /> }}
+      />
+      <Tabs.Screen
+        name="Plan"
+        component={PlanScreen}
         options={{ tabBarIcon: ({ color }) => <TabDot color={color} /> }}
       />
       <Tabs.Screen

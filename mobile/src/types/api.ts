@@ -81,6 +81,11 @@ export interface TokenResponse {
   user: User;
 }
 
+export interface CalendarSubscription {
+  url: string;
+  token: string;
+}
+
 export interface TaskListResponse {
   data: Task[];
   total: number;
