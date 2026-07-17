@@ -39,4 +39,8 @@ export const tasksApi = {
   remove: async (id: string): Promise<void> => {
     await apiClient.delete(`/tasks/${id}`);
   },
+  createGithubIssue: async (id: string): Promise<Task> => {
+    const { data } = await apiClient.post<Task>(`/tasks/${id}/github-issue`);
+    return data;
+  },
 };

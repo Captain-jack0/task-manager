@@ -14,6 +14,8 @@ import {
 import { AppModal } from '../components/AppModal';
 import { AppButton, Badge, Field, formatDate } from '../components/ui';
 import { NEXT_STATUS, STATUS_COLOR, STATUS_LABEL, isCompleted } from '../features/tasks/status';
+import { QuickAddBar } from '../features/tasks/QuickAddBar';
+import { BoardView } from '../features/tasks/BoardView';
 import { useSnooze, useTasks, useUpdateTask } from '../features/tasks/useTasks';
 import { useCreateProject, useProjects } from '../features/projects/useProjects';
 import { useWorkspaces } from '../features/workspaces/useWorkspaces';
@@ -61,6 +63,7 @@ export function TasksScreen() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>('all');
   const [projectFilter, setProjectFilter] = useState<'all' | string>('all');
+  const [view, setView] = useState<'list' | 'board'>('list');
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const createProject = useCreateProject();
@@ -108,6 +111,8 @@ export function TasksScreen() {
 
   const header = (
     <View style={styles.header}>
+      <QuickAddBar />
+
       {workspaces && workspaces.length > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           {workspaces.map((w: Workspace) => (
@@ -154,33 +159,48 @@ export function TasksScreen() {
         ))}
         <Chip label="＋ New" active={false} onPress={() => setShowNewProject(true)} />
       </ScrollView>
+
+      <View style={styles.viewToggle}>
+        <Chip label="List" active={view === 'list'} onPress={() => setView('list')} />
+        <Chip label="Board" active={view === 'board'} onPress={() => setView('board')} />
+      </View>
     </View>
   );
 
   return (
     <View style={styles.screen}>
-      <FlatList
-        data={filtered}
-        keyExtractor={(t) => t.id}
-        ListHeaderComponent={header}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <TaskCard
-            task={item}
-            projectName={item.project_id ? projectNameById[item.project_id] : undefined}
-            assigneeEmail={item.assignee_id ? assigneeEmailById[item.assignee_id] : undefined}
-            onPress={() => nav.navigate('TaskDetail', { id: item.id })}
-          />
-        )}
-        refreshControl={
-          <RefreshControl refreshing={tasksQuery.isRefetching} onRefresh={() => tasksQuery.refetch()} />
-        }
-        ListEmptyComponent={
-          <Text style={styles.empty}>
-            {tasksQuery.isLoading ? 'Loading…' : 'No tasks match. Add one from the New tab.'}
-          </Text>
-        }
-      />
+      {view === 'list' ? (
+        <FlatList
+          data={filtered}
+          keyExtractor={(t) => t.id}
+          ListHeaderComponent={header}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <TaskCard
+              task={item}
+              projectName={item.project_id ? projectNameById[item.project_id] : undefined}
+              assigneeEmail={item.assignee_id ? assigneeEmailById[item.assignee_id] : undefined}
+              onPress={() => nav.navigate('TaskDetail', { id: item.id })}
+            />
+          )}
+          refreshControl={
+            <RefreshControl
+              refreshing={tasksQuery.isRefetching}
+              onRefresh={() => tasksQuery.refetch()}
+            />
+          }
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {tasksQuery.isLoading ? 'Loading…' : 'No tasks match. Add one from the New tab.'}
+            </Text>
+          }
+        />
+      ) : (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          {header}
+          <BoardView tasks={filtered} onPick={(id) => nav.navigate('TaskDetail', { id })} />
+        </ScrollView>
+      )}
 
       <AppModal visible={showNewProject} onClose={() => setShowNewProject(false)} title="New project">
         <Field
@@ -278,6 +298,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.card,
   },
+  viewToggle: { flexDirection: 'row', gap: 8 },
   listContent: { padding: spacing, gap: 12 },
   card: {
     backgroundColor: colors.card,

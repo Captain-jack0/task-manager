@@ -86,6 +86,11 @@ export interface CalendarSubscription {
   token: string;
 }
 
+export interface GithubStatus {
+  connected: boolean;
+  repo: string | null;
+}
+
 export interface TaskListResponse {
   data: Task[];
   total: number;
@@ -103,6 +108,12 @@ export interface TaskCreateInput {
   energy_level?: TaskEnergy | null;
   project_id?: string | null;
   assignee_id?: string | null;
+  tag_ids?: string[];
+}
+
+export interface TagCreateInput {
+  name: string;
+  color?: string | null;
 }
 
 export type TaskUpdateInput = Partial<TaskCreateInput>;

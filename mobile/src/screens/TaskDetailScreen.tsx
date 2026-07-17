@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { extractErrorMessage } from '../api/client';
 import { AppButton, Badge, Field, Segmented, formatDate } from '../components/ui';
 import { STATUS_COLOR, STATUS_LABEL } from '../features/tasks/status';
@@ -8,6 +8,7 @@ import { dueToIso } from '../features/tasks/due';
 import { useDeleteTask, useSnooze, useTask, useUpdateTask } from '../features/tasks/useTasks';
 import { useProjects } from '../features/projects/useProjects';
 import { useMembers } from '../features/workspaces/useMembers';
+import { useCreateGithubIssue, useGithubStatus } from '../features/integrations/useGithub';
 import { CommentsSection } from '../features/comments/CommentsSection';
 import { useAuthStore } from '../store/authStore';
 import type { RootStackParamList } from '../navigation';
@@ -54,6 +55,8 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   const update = useUpdateTask();
   const snooze = useSnooze();
   const remove = useDeleteTask();
+  const github = useGithubStatus();
+  const createIssue = useCreateGithubIssue();
 
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
@@ -245,6 +248,33 @@ export function TaskDetailScreen({ route, navigation }: Props) {
           loading={remove.isPending}
           onPress={confirmDelete}
         />
+      </View>
+
+      <View style={styles.divider} />
+      <View style={{ gap: 6 }}>
+        <Text style={styles.sectionLabel}>GitHub</Text>
+        {task.github_issue_url ? (
+          <AppButton
+            title={`View issue #${task.github_issue_number ?? ''}`}
+            variant="secondary"
+            onPress={() => {
+              if (task.github_issue_url) Linking.openURL(task.github_issue_url);
+            }}
+          />
+        ) : github.data?.connected ? (
+          <AppButton
+            title="Open as GitHub issue"
+            variant="secondary"
+            loading={createIssue.isPending}
+            onPress={() =>
+              createIssue.mutate(task.id, {
+                onError: (e) => Alert.alert('Could not create issue', extractErrorMessage(e)),
+              })
+            }
+          />
+        ) : (
+          <Text style={styles.muted}>Connect GitHub on the web to open tasks as issues.</Text>
+        )}
       </View>
 
       <View style={styles.divider} />

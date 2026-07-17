@@ -1,0 +1,13 @@
+import { apiClient } from './client';
+import type { Tag, TagCreateInput } from '../types/api';
+
+export const tagsApi = {
+  list: async (): Promise<Tag[]> => {
+    const { data } = await apiClient.get<Tag[]>('/tags');
+    return data;
+  },
+  create: async (input: TagCreateInput): Promise<Tag> => {
+    const { data } = await apiClient.post<Tag>('/tags', input);
+    return data;
+  },
+};
