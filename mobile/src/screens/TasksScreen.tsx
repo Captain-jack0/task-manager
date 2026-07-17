@@ -16,6 +16,7 @@ import { AppButton, Badge, Field, formatDate } from '../components/ui';
 import { NEXT_STATUS, STATUS_COLOR, STATUS_LABEL, isCompleted } from '../features/tasks/status';
 import { QuickAddBar } from '../features/tasks/QuickAddBar';
 import { BoardView } from '../features/tasks/BoardView';
+import { dueToIso } from '../features/tasks/due';
 import { useSnooze, useTasks, useUpdateTask } from '../features/tasks/useTasks';
 import { useCreateProject, useProjects } from '../features/projects/useProjects';
 import { useWorkspaces } from '../features/workspaces/useWorkspaces';
@@ -247,6 +248,27 @@ function TaskCard({
         {stuck && <Badge label={`snoozed ${task.snooze_count}×`} color={colors.warnText} />}
       </View>
 
+      {!isCompleted(task.status) && !task.due_date && (
+        <View style={styles.scheduleRow}>
+          <Text style={styles.scheduleLabel}>📅 Schedule:</Text>
+          {(
+            [
+              { label: 'Today', value: 'today' },
+              { label: 'Tomorrow', value: 'tomorrow' },
+              { label: 'Next week', value: 'week' },
+            ] as const
+          ).map((opt) => (
+            <Pressable
+              key={opt.value}
+              onPress={() => update.mutate({ id: task.id, input: { due_date: dueToIso(opt.value) } })}
+              hitSlop={4}
+            >
+              <Text style={styles.scheduleLink}>{opt.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       {!isCompleted(task.status) && (
         <View style={styles.actions}>
           {next && (
@@ -310,6 +332,9 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  scheduleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10 },
+  scheduleLabel: { fontSize: 12, color: colors.faint },
+  scheduleLink: { fontSize: 12, fontWeight: '600', color: colors.primary },
   actions: { flexDirection: 'row', gap: 8 },
   actionBtn: { flex: 1 },
   empty: { textAlign: 'center', color: colors.muted, marginTop: 48, fontSize: 14 },

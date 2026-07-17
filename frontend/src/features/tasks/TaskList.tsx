@@ -31,6 +31,16 @@ export function TaskList({ tasks, projects, members }: Props) {
     });
   };
 
+  const handleSchedule = (id: string, iso: string) => {
+    updateMutation.mutate(
+      { id, input: { due_date: iso } },
+      {
+        onSuccess: () => toast.success('Scheduled'),
+        onError: (err) => toast.error(extractErrorMessage(err, 'Could not schedule')),
+      },
+    );
+  };
+
   const handleDelete = (id: string) => {
     if (!window.confirm('Delete this task?')) return;
     deleteMutation.mutate(id, {
@@ -52,6 +62,7 @@ export function TaskList({ tasks, projects, members }: Props) {
             assigneeEmail={task.assignee_id ? emailById.get(task.assignee_id) : undefined}
             onToggleStatus={(next) => handleStatus(task.id, next)}
             onSnooze={() => handleSnooze(task.id)}
+            onSchedule={(iso) => handleSchedule(task.id, iso)}
             onDelete={() => handleDelete(task.id)}
           />
         );

@@ -11,6 +11,15 @@ const PRIORITY_DOT: Record<Task['priority'], string> = {
   high: 'bg-red-500',
 };
 
+// ISO for `daysAhead` days from now at 17:00 local — used by the one-tap
+// "Schedule" shortcuts on dateless tasks (also puts them on the calendar feed).
+function scheduleIso(daysAhead: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  d.setHours(17, 0, 0, 0);
+  return d.toISOString();
+}
+
 interface Props {
   task: Task;
   projectName?: string;
@@ -18,6 +27,7 @@ interface Props {
   assigneeEmail?: string;
   onToggleStatus: (next: TaskStatus) => void;
   onSnooze: () => void;
+  onSchedule: (iso: string) => void;
   onDelete: () => void;
 }
 
@@ -28,6 +38,7 @@ export function TaskCard({
   assigneeEmail,
   onToggleStatus,
   onSnooze,
+  onSchedule,
   onDelete,
 }: Props) {
   const done = isCompleted(task.status);
@@ -67,10 +78,30 @@ export function TaskCard({
         </p>
       )}
 
-      {task.due_date && (
+      {task.due_date ? (
         <p className={cn('mt-2 text-xs', overdue ? 'text-red-600 dark:text-red-400' : 'text-slate-400')}>
           Due {formatDate(task.due_date)}{overdue && ' · overdue'}
         </p>
+      ) : (
+        !done && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
+            <span title="Add a due date — also shows it on your calendar feed">📅 Schedule:</span>
+            {[
+              { label: 'Today', days: 0 },
+              { label: 'Tomorrow', days: 1 },
+              { label: 'Next week', days: 7 },
+            ].map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => onSchedule(scheduleIso(opt.days))}
+                className="font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )
       )}
 
       {(task.estimated_minutes != null || task.energy_level || task.snooze_count > 0) && (
