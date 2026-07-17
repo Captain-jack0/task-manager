@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   open: boolean;
@@ -20,7 +21,11 @@ export function Modal({ open, onClose, title, children, footer }: Props) {
 
   if (!open) return null;
 
-  return (
+  // Portal to <body>: modals are often triggered from inside the header, which
+  // has `backdrop-blur`. A backdrop-filter creates a containing block for fixed
+  // descendants, so without the portal `fixed inset-0` would size to the header
+  // (~64px) instead of the viewport, clipping the modal to just its title.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -46,6 +51,7 @@ export function Modal({ open, onClose, title, children, footer }: Props) {
         <div>{children}</div>
         {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
