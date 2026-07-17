@@ -20,6 +20,12 @@ function scheduleIso(daysAhead: number): string {
   return d.toISOString();
 }
 
+// ISO (17:00 local) for a picked YYYY-MM-DD, for the "Pick a day" date input.
+function dateStrToIso(yyyyMmDd: string): string {
+  const [y, m, d] = yyyyMmDd.split('-').map(Number);
+  return new Date(y, m - 1, d, 17, 0, 0, 0).toISOString();
+}
+
 interface Props {
   task: Task;
   projectName?: string;
@@ -100,6 +106,13 @@ export function TaskCard({
                 {opt.label}
               </button>
             ))}
+            <input
+              type="date"
+              aria-label="Pick a due date"
+              title="Pick a specific day"
+              onChange={(e) => e.currentTarget.value && onSchedule(dateStrToIso(e.currentTarget.value))}
+              className="ml-1 cursor-pointer rounded border border-slate-200 bg-transparent px-1 py-0.5 text-slate-500 dark:border-slate-700 dark:text-slate-400"
+            />
           </div>
         )
       )}

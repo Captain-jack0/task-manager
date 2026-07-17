@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppModal } from '../components/AppModal';
 import { AppButton, Badge, Field, formatDate } from '../components/ui';
 import { NEXT_STATUS, STATUS_COLOR, STATUS_LABEL, isCompleted } from '../features/tasks/status';
@@ -230,8 +231,15 @@ function TaskCard({
 }) {
   const update = useUpdateTask();
   const snooze = useSnooze();
+  const [showPicker, setShowPicker] = useState(false);
   const next = NEXT_STATUS[task.status];
   const stuck = task.snooze_count >= 3 && !isCompleted(task.status);
+
+  const scheduleAt = (d: Date) => {
+    const nd = new Date(d);
+    nd.setHours(17, 0, 0, 0);
+    update.mutate({ id: task.id, input: { due_date: nd.toISOString() } });
+  };
 
   return (
     <Pressable onPress={onPress} style={styles.card}>
@@ -266,7 +274,21 @@ function TaskCard({
               <Text style={styles.scheduleLink}>{opt.label}</Text>
             </Pressable>
           ))}
+          <Pressable onPress={() => setShowPicker(true)} hitSlop={4}>
+            <Text style={styles.scheduleLink}>Pick…</Text>
+          </Pressable>
         </View>
+      )}
+
+      {showPicker && (
+        <DateTimePicker
+          value={new Date()}
+          mode="date"
+          onChange={(e, d) => {
+            setShowPicker(false);
+            if (e.type === 'set' && d) scheduleAt(d);
+          }}
+        />
       )}
 
       {!isCompleted(task.status) && (

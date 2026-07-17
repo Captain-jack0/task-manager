@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { extractErrorMessage } from '../api/client';
 import { AppButton, Field, Segmented } from '../components/ui';
 import { useCreateTask } from '../features/tasks/useTasks';
-import { dueToIso } from '../features/tasks/due';
+import { DueField } from '../features/tasks/DueField';
 import { useProjects } from '../features/projects/useProjects';
 import type { TabParamList } from '../navigation';
 import { colors, spacing } from '../theme';
@@ -27,12 +27,6 @@ const MINUTE_OPTS = [
   { label: '1h', value: '60' },
   { label: '2h', value: '120' },
 ];
-const DUE_OPTS = [
-  { label: 'None', value: 'none' },
-  { label: 'Today', value: 'today' },
-  { label: 'Tomorrow', value: 'tomorrow' },
-  { label: 'Next week', value: 'week' },
-];
 
 export function NewTaskScreen() {
   const nav = useNavigation<BottomTabNavigationProp<TabParamList>>();
@@ -42,7 +36,7 @@ export function NewTaskScreen() {
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [energy, setEnergy] = useState<TaskEnergy | null>(null);
   const [minutes, setMinutes] = useState<string | null>(null);
-  const [due, setDue] = useState('none');
+  const [dueDate, setDueDate] = useState<Date | null>(null);
   const [projectId, setProjectId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +57,7 @@ export function NewTaskScreen() {
         priority,
         energy_level: energy ?? undefined,
         estimated_minutes: minutes ? Number(minutes) : undefined,
-        due_date: dueToIso(due),
+        due_date: dueDate ? dueDate.toISOString() : null,
         project_id: projectId || null,
       },
       {
@@ -72,7 +66,7 @@ export function NewTaskScreen() {
           setPriority('medium');
           setEnergy(null);
           setMinutes(null);
-          setDue('none');
+          setDueDate(null);
           setProjectId('');
           nav.navigate('Tasks');
         },
@@ -111,7 +105,7 @@ export function NewTaskScreen() {
 
         <View style={{ gap: 8 }}>
           <Text style={styles.label}>Due</Text>
-          <Segmented options={DUE_OPTS} value={due} onChange={setDue} />
+          <DueField value={dueDate} onChange={setDueDate} />
         </View>
 
         {projects && projects.length > 0 && (

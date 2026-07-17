@@ -4,7 +4,7 @@ import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native
 import { extractErrorMessage } from '../api/client';
 import { AppButton, Badge, Field, Segmented, formatDate } from '../components/ui';
 import { STATUS_COLOR, STATUS_LABEL } from '../features/tasks/status';
-import { dueToIso } from '../features/tasks/due';
+import { DueField } from '../features/tasks/DueField';
 import { useDeleteTask, useSnooze, useTask, useUpdateTask } from '../features/tasks/useTasks';
 import { useProjects } from '../features/projects/useProjects';
 import { useMembers } from '../features/workspaces/useMembers';
@@ -36,14 +36,6 @@ const ENERGY_OPTS = [
   { label: 'Medium', value: 'medium' },
   { label: 'High', value: 'high' },
 ];
-const DUE_OPTS = [
-  { label: 'Keep', value: 'keep' },
-  { label: 'None', value: 'none' },
-  { label: 'Today', value: 'today' },
-  { label: 'Tomorrow', value: 'tomorrow' },
-  { label: 'Next week', value: 'week' },
-];
-
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskDetail'>;
 
 export function TaskDetailScreen({ route, navigation }: Props) {
@@ -66,7 +58,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   const [estimate, setEstimate] = useState('');
   const [projectId, setProjectId] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
-  const [dueChoice, setDueChoice] = useState('keep');
+  const [dueDate, setDueDate] = useState<Date | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const projectOptions = [
@@ -102,7 +94,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
     setEstimate(task.estimated_minutes != null ? String(task.estimated_minutes) : '');
     setProjectId(task.project_id ?? '');
     setAssigneeId(task.assignee_id ?? '');
-    setDueChoice('keep');
+    setDueDate(task.due_date ? new Date(task.due_date) : null);
     setErr(null);
     setEditing(true);
   };
@@ -123,8 +115,8 @@ export function TaskDetailScreen({ route, navigation }: Props) {
         estimate.trim() === '' || Number.isNaN(n) ? null : Math.max(1, Math.round(n)),
       project_id: projectId === '' ? null : projectId,
       assignee_id: assigneeId === '' ? null : assigneeId,
+      due_date: dueDate ? dueDate.toISOString() : null,
     };
-    if (dueChoice !== 'keep') input.due_date = dueToIso(dueChoice);
     try {
       await update.mutateAsync({ id: task.id, input });
       setEditing(false);
@@ -172,7 +164,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
         />
         <View style={{ gap: 8 }}>
           <Text style={styles.sectionLabel}>Due</Text>
-          <Segmented options={DUE_OPTS} value={dueChoice} onChange={setDueChoice} />
+          <DueField value={dueDate} onChange={setDueDate} />
         </View>
         {projects && projects.length > 0 && (
           <View style={{ gap: 8 }}>
