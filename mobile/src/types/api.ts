@@ -34,6 +34,21 @@ export interface Project {
   created_at: string;
 }
 
+export interface Member {
+  user_id: string;
+  email: string;
+  role: WorkspaceRole;
+}
+
+export interface Comment {
+  id: string;
+  task_id: string;
+  author_id: string;
+  author_email: string;
+  body: string;
+  created_at: string;
+}
+
 export interface ProjectCreateInput {
   name: string;
   color?: string | null;
@@ -82,6 +97,7 @@ export interface TaskCreateInput {
   estimated_minutes?: number | null;
   energy_level?: TaskEnergy | null;
   project_id?: string | null;
+  assignee_id?: string | null;
 }
 
 export type TaskUpdateInput = Partial<TaskCreateInput>;

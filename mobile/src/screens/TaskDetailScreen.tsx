@@ -7,9 +7,19 @@ import { STATUS_COLOR, STATUS_LABEL } from '../features/tasks/status';
 import { dueToIso } from '../features/tasks/due';
 import { useDeleteTask, useSnooze, useTask, useUpdateTask } from '../features/tasks/useTasks';
 import { useProjects } from '../features/projects/useProjects';
+import { useMembers } from '../features/workspaces/useMembers';
+import { CommentsSection } from '../features/comments/CommentsSection';
+import { useAuthStore } from '../store/authStore';
 import type { RootStackParamList } from '../navigation';
 import { colors, priorityColor, spacing } from '../theme';
-import type { Project, TaskEnergy, TaskPriority, TaskStatus, TaskUpdateInput } from '../types/api';
+import type {
+  Member,
+  Project,
+  TaskEnergy,
+  TaskPriority,
+  TaskStatus,
+  TaskUpdateInput,
+} from '../types/api';
 
 const STATUS_OPTS = (['todo', 'in_progress', 'blocked', 'done', 'closed'] as TaskStatus[]).map(
   (s) => ({ label: STATUS_LABEL[s], value: s }),
@@ -39,6 +49,8 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   const { id } = route.params;
   const { data: task, isLoading } = useTask(id);
   const { data: projects } = useProjects();
+  const { data: members } = useMembers(task?.workspace_id);
+  const user = useAuthStore((s) => s.user);
   const update = useUpdateTask();
   const snooze = useSnooze();
   const remove = useDeleteTask();
@@ -50,6 +62,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   const [energy, setEnergy] = useState('none');
   const [estimate, setEstimate] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
   const [dueChoice, setDueChoice] = useState('keep');
   const [err, setErr] = useState<string | null>(null);
 
@@ -59,6 +72,15 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   ];
   const projectName = task?.project_id
     ? (projects ?? []).find((p: Project) => p.id === task.project_id)?.name
+    : undefined;
+
+  const memberList = members ?? [];
+  const assigneeOptions = [
+    { label: 'Unassigned', value: '' },
+    ...memberList.map((m: Member) => ({ label: m.email, value: m.user_id })),
+  ];
+  const assigneeEmail = task?.assignee_id
+    ? memberList.find((m: Member) => m.user_id === task.assignee_id)?.email
     : undefined;
 
   if (isLoading || !task) {
@@ -76,6 +98,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
     setEnergy(task.energy_level ?? 'none');
     setEstimate(task.estimated_minutes != null ? String(task.estimated_minutes) : '');
     setProjectId(task.project_id ?? '');
+    setAssigneeId(task.assignee_id ?? '');
     setDueChoice('keep');
     setErr(null);
     setEditing(true);
@@ -96,6 +119,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
       estimated_minutes:
         estimate.trim() === '' || Number.isNaN(n) ? null : Math.max(1, Math.round(n)),
       project_id: projectId === '' ? null : projectId,
+      assignee_id: assigneeId === '' ? null : assigneeId,
     };
     if (dueChoice !== 'keep') input.due_date = dueToIso(dueChoice);
     try {
@@ -154,6 +178,13 @@ export function TaskDetailScreen({ route, navigation }: Props) {
           </View>
         )}
 
+        {memberList.length > 0 && (
+          <View style={{ gap: 8 }}>
+            <Text style={styles.sectionLabel}>Assignee</Text>
+            <Segmented options={assigneeOptions} value={assigneeId} onChange={setAssigneeId} />
+          </View>
+        )}
+
         {err && <Text style={styles.error}>{err}</Text>}
 
         <View style={{ gap: 10, marginTop: 4 }}>
@@ -174,6 +205,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
         <Badge label={STATUS_LABEL[task.status]} color={STATUS_COLOR[task.status]} />
         <Badge label={task.priority} color={priorityColor[task.priority]} />
         {projectName && <Badge label={projectName} color={colors.primary} />}
+        {assigneeEmail && <Badge label={`@ ${assigneeEmail}`} color={colors.success} />}
         {task.energy_level && <Badge label={`${task.energy_level} energy`} color={colors.muted} />}
         {task.estimated_minutes != null && (
           <Badge label={`~${task.estimated_minutes}m`} color={colors.faint} />
@@ -214,6 +246,9 @@ export function TaskDetailScreen({ route, navigation }: Props) {
           onPress={confirmDelete}
         />
       </View>
+
+      <View style={styles.divider} />
+      <CommentsSection taskId={task.id} members={memberList} currentUserId={user?.id} />
     </ScrollView>
   );
 }
@@ -229,4 +264,5 @@ const styles = StyleSheet.create({
   muted: { fontSize: 14, color: colors.muted },
   sectionLabel: { fontSize: 13, fontWeight: '600', color: colors.muted },
   error: { color: colors.danger, fontSize: 13 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
 });

@@ -17,10 +17,11 @@ import { NEXT_STATUS, STATUS_COLOR, STATUS_LABEL, isCompleted } from '../feature
 import { useSnooze, useTasks, useUpdateTask } from '../features/tasks/useTasks';
 import { useCreateProject, useProjects } from '../features/projects/useProjects';
 import { useWorkspaces } from '../features/workspaces/useWorkspaces';
+import { useMembers } from '../features/workspaces/useMembers';
 import type { RootStackParamList } from '../navigation';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { colors, priorityColor, spacing } from '../theme';
-import type { Project, Task, TaskStatus, Workspace } from '../types/api';
+import type { Member, Project, Task, TaskStatus, Workspace } from '../types/api';
 
 const STATUS_FILTERS: { label: string; value: 'all' | TaskStatus }[] = [
   { label: 'All', value: 'all' },
@@ -53,6 +54,7 @@ export function TasksScreen() {
   const setWorkspace = useWorkspaceStore((s) => s.setCurrentWorkspace);
   const { data: workspaces } = useWorkspaces();
   const { data: projects } = useProjects();
+  const { data: members } = useMembers(workspaceId);
   const tasksQuery = useTasks({ workspace_id: workspaceId ?? undefined, limit: 200 });
   const tasks = tasksQuery.data?.data ?? [];
 
@@ -70,6 +72,14 @@ export function TasksScreen() {
     });
     return map;
   }, [projects]);
+
+  const assigneeEmailById = useMemo(() => {
+    const map: Record<string, string> = {};
+    (members ?? []).forEach((m: Member) => {
+      map[m.user_id] = m.email;
+    });
+    return map;
+  }, [members]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -158,6 +168,7 @@ export function TasksScreen() {
           <TaskCard
             task={item}
             projectName={item.project_id ? projectNameById[item.project_id] : undefined}
+            assigneeEmail={item.assignee_id ? assigneeEmailById[item.assignee_id] : undefined}
             onPress={() => nav.navigate('TaskDetail', { id: item.id })}
           />
         )}
@@ -188,10 +199,12 @@ export function TasksScreen() {
 function TaskCard({
   task,
   projectName,
+  assigneeEmail,
   onPress,
 }: {
   task: Task;
   projectName?: string;
+  assigneeEmail?: string;
   onPress: () => void;
 }) {
   const update = useUpdateTask();
@@ -206,6 +219,7 @@ function TaskCard({
         <Badge label={STATUS_LABEL[task.status]} color={STATUS_COLOR[task.status]} />
         <Badge label={task.priority} color={priorityColor[task.priority]} />
         {projectName && <Badge label={projectName} color={colors.primary} />}
+        {assigneeEmail && <Badge label={`@ ${assigneeEmail}`} color={colors.success} />}
         {task.due_date && <Badge label={`due ${formatDate(task.due_date)}`} color={colors.muted} />}
         {task.estimated_minutes != null && (
           <Badge label={`~${task.estimated_minutes}m`} color={colors.faint} />
