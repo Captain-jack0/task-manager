@@ -41,7 +41,10 @@ def create_app() -> FastAPI:
         allow_origins=settings.cors_origins,
         # Allow Vercel preview deployments (e.g. task-manager-git-feat-xxx.vercel.app).
         allow_origin_regex=r"https://.*\.vercel\.app",
-        allow_credentials=True,
+        # Auth is via the Authorization header (Bearer JWT), not cookies, so
+        # credentialed CORS is unnecessary — keeping it off means a stray
+        # attacker-*.vercel.app origin can't make credentialed reads.
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )

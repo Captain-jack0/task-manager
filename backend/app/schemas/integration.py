@@ -27,6 +27,9 @@ class GithubConnectRequest(BaseModel):
         v = v.removesuffix(".git").strip("/")
         if not _REPO_RE.fullmatch(v):
             raise ValueError("repo must be in the form owner/repo")
+        # Reject "." / ".." segments so the repo can't normalise the request path.
+        if any(seg in (".", "..") for seg in v.split("/")):
+            raise ValueError("repo must be in the form owner/repo")
         return v
 
 
