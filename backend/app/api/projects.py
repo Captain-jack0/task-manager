@@ -1,17 +1,21 @@
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.access import _ensure_not_guest, resolve_workspace
 from app.api.deps import CurrentUser, SessionDep
 from app.models.project import Project
+from app.models.user import User
 from app.repositories import project_repo, workspace_repo
 from app.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
-async def _require_project(session, user, project_id: UUID, *, write: bool = False) -> Project:
+async def _require_project(
+    session: AsyncSession, user: User, project_id: UUID, *, write: bool = False
+) -> Project:
     project = await project_repo.get(session, project_id=project_id)
     if project is None or not await workspace_repo.is_member(
         session, workspace_id=project.workspace_id, user_id=user.id

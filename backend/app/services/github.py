@@ -3,6 +3,8 @@
 Uses the user's personal access token to verify repo access and create issues.
 Network/permission problems are mapped to clean 400/502 HTTPExceptions.
 """
+from typing import Any
+
 import httpx
 from fastapi import HTTPException, status
 
@@ -29,7 +31,7 @@ async def verify_repo(token: str, repo: str) -> None:
     _raise_for_access(resp.status_code)
 
 
-async def create_issue(token: str, repo: str, *, title: str, body: str) -> dict:
+async def create_issue(token: str, repo: str, *, title: str, body: str) -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=15) as client:
         try:
             resp = await client.post(
@@ -76,7 +78,7 @@ async def get_issue_state(token: str, repo: str, number: int) -> str:
     )
 
 
-async def list_repos(token: str) -> list[dict]:
+async def list_repos(token: str) -> list[dict[str, Any]]:
     """List repositories the token can access (most-recently-updated first)."""
     async with httpx.AsyncClient(timeout=10) as client:
         try:

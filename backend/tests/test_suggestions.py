@@ -1,20 +1,20 @@
 """Unit tests for the 'What should I do now?' scoring engine (pure functions)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.models.task import Task, TaskEnergy, TaskPriority
 from app.services.suggestions import rank_tasks, score_task
 
-NOW = datetime(2026, 7, 15, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
 
 
 def _task(**kw) -> Task:
-    defaults = dict(
-        title="t",
-        priority=TaskPriority.MEDIUM,
-        estimated_minutes=None,
-        energy_level=None,
-        due_date=None,
-    )
+    defaults = {
+        "title": "t",
+        "priority": TaskPriority.MEDIUM,
+        "estimated_minutes": None,
+        "energy_level": None,
+        "due_date": None,
+    }
     defaults.update(kw)
     return Task(**defaults)
 

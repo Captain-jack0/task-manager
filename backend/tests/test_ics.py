@@ -1,24 +1,24 @@
 """Unit tests for the iCal serializer (pure functions, no DB)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.models.task import Task, TaskPriority, TaskStatus
 from app.services import ics
 
-NOW = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
-DUE = datetime(2026, 7, 20, 14, 30, tzinfo=timezone.utc)
+NOW = datetime(2026, 7, 16, 9, 0, tzinfo=UTC)
+DUE = datetime(2026, 7, 20, 14, 30, tzinfo=UTC)
 TASK_ID = UUID("11111111-1111-1111-1111-111111111111")
 
 
 def _task(**kw) -> Task:
-    defaults = dict(
-        id=TASK_ID,
-        title="Ship it",
-        status=TaskStatus.TODO,
-        priority=TaskPriority.MEDIUM,
-        estimated_minutes=None,
-        due_date=DUE,
-    )
+    defaults = {
+        "id": TASK_ID,
+        "title": "Ship it",
+        "status": TaskStatus.TODO,
+        "priority": TaskPriority.MEDIUM,
+        "estimated_minutes": None,
+        "due_date": DUE,
+    }
     defaults.update(kw)
     return Task(**defaults)
 

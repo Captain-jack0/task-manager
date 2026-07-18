@@ -1,12 +1,14 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.access import require_task, resolve_workspace
 from app.api.deps import CurrentUser, SessionDep
 from app.core.crypto import decrypt_secret
 from app.core.rate_limit import limiter
+from app.models.tag import Tag
 from app.models.task import Task, TaskEnergy, TaskStatus
 from app.models.user import User
 from app.repositories import (
@@ -25,7 +27,6 @@ from app.schemas.task import (
     TaskUpdate,
 )
 from app.services import github, suggestions
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -38,7 +39,9 @@ async def _require_task(
     return await require_task(session, user, task_id, write=write)
 
 
-async def _resolve_tags(session, *, tag_ids, user_id):
+async def _resolve_tags(
+    session: AsyncSession, *, tag_ids: list[UUID], user_id: UUID
+) -> list[Tag]:
     if not tag_ids:
         return []
     tags = await tag_repo.get_tags_by_ids(session, tag_ids=tag_ids, user_id=user_id)
@@ -153,7 +156,7 @@ async def suggest_tasks(
     how well they fit the time and energy the user has right now."""
     ws_id = await resolve_workspace(session, current_user, workspace_id)
     tasks = await task_repo.list_active_tasks(session, workspace_id=ws_id)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ranked = suggestions.rank_tasks(
         tasks, available_minutes=minutes, energy=energy, now=now, limit=limit
     )
@@ -207,7 +210,7 @@ async def snooze_task(
     """Push a task to a later day without guilt, and count the postponement."""
     task = await _require_task(session, current_user, task_id, write=True)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if task.due_date is not None and task.due_date > now:
         task.due_date = task.due_date + timedelta(days=1)
     else:

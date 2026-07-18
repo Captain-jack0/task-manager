@@ -33,6 +33,7 @@ from app.api.deps import get_db  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.main import create_app  # noqa: E402
 
+
 def _ensure_test_database() -> None:
     """Create the test database if it does not yet exist (idempotent)."""
     parsed = urlparse(TEST_DB_URL.replace("postgresql+asyncpg://", "postgresql://"))

@@ -3,9 +3,8 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

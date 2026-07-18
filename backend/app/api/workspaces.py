@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models.user import User
@@ -43,7 +44,7 @@ async def create_workspace(
 # --- members ---
 
 
-async def _require_workspace(session, user: User, workspace_id: UUID) -> Workspace:
+async def _require_workspace(session: AsyncSession, user: User, workspace_id: UUID) -> Workspace:
     """The workspace must exist and the current user must be a member."""
     workspace = await workspace_repo.get(session, workspace_id=workspace_id)
     role = await workspace_repo.get_role(
@@ -54,7 +55,7 @@ async def _require_workspace(session, user: User, workspace_id: UUID) -> Workspa
     return workspace
 
 
-async def _require_manager(session, user: User, workspace_id: UUID) -> Workspace:
+async def _require_manager(session: AsyncSession, user: User, workspace_id: UUID) -> Workspace:
     workspace = await _require_workspace(session, user, workspace_id)
     role = await workspace_repo.get_role(
         session, workspace_id=workspace_id, user_id=user.id

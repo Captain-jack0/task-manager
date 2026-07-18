@@ -49,6 +49,9 @@ addopts = "-v --strict-markers"
 [tool.coverage.run]
 source = ["app"]
 omit = ["app/db/session.py", "alembic/*"]
+# SQLAlchemy's async engine runs code through greenlets; without this, coverage
+# misses async endpoint bodies and under-reports by ~15 points.
+concurrency = ["thread", "greenlet"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -60,10 +63,26 @@ exclude_lines = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Alembic migrations are generated boilerplate (old-style typing from the
+# template) — not worth linting.
+extend-exclude = ["alembic"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
+# UP042 wants StrEnum, but `(str, Enum)` + values_callable is the intentional
+# SQLAlchemy pattern here; switching changes str()/serialization behaviour.
+ignore = ["E501", "UP042"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's Query/Depends/etc. in argument defaults is the framework idiom, not
+# the mutable-default bug B008 warns about.
+extend-immutable-calls = [
+    "fastapi.Query",
+    "fastapi.Depends",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+]
 
 [tool.mypy]
 python_version = "3.12"
