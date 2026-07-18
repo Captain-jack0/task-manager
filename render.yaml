@@ -1,19 +1,26 @@
-# Render.com blueprint
-# Deploy: https://dashboard.render.com/new -> "Blueprint" -> connect this GitHub repo
-# Free tier notes:
-#   - Web service free, but spins down after 15 min idle (cold start ~30s on next request)
-#   - Postgres on Render free tier expires after 90 days; use Neon instead (always free)
+# Render.com blueprint — two environments from two branches.
+# Deploy: https://dashboard.render.com/new -> "Blueprint" -> connect this repo.
+#
+#   dev  branch -> task-manager-api-dev   (autoDeploy: true  = deploys on every push)
+#   test branch -> task-manager-api-test  (autoDeploy: false = you click "Manual Deploy")
+#
+# Each service is fully isolated: its own DATABASE_URL (use a separate Neon
+# database/branch per env) and its own auto-generated JWT_SECRET/APP_ENCRYPTION_KEY.
+# Free tier: web services sleep after 15 min idle (~30 s cold start); Neon is
+# always-free (use one Neon project with a `dev` and a `test` branch).
 services:
+  # --- DEV: auto-deploys on push to `dev` ---
   - type: web
-    name: task-manager-api
+    name: task-manager-api-dev
     runtime: docker
     plan: free
     region: frankfurt
     rootDir: backend
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /health
+    branch: dev
     autoDeploy: true
+    healthCheckPath: /health
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -23,14 +30,38 @@ services:
         value: "60"
       - key: JWT_SECRET
         generateValue: true
-      # Encrypts stored GitHub PATs at rest. Generated once and kept stable —
-      # if it ever changes, previously-saved GitHub tokens can't be decrypted.
-      # The app REFUSES to boot in production without this (and JWT_SECRET) set.
       - key: APP_ENCRYPTION_KEY
         generateValue: true
-      # Set these manually in the Render dashboard (Environment tab):
-      #   DATABASE_URL  -> from Neon (postgresql+asyncpg://user:pass@host/db?sslmode=require)
-      #   FRONTEND_URL  -> https://<your-app>.vercel.app  (comma-separated for multiple)
+      # Set in the dashboard (Environment tab) — point at the Neon *dev* database:
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  # --- TEST: manual deploy only (autoDeploy: false) ---
+  - type: web
+    name: task-manager-api-test
+    runtime: docker
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: test
+    autoDeploy: false
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "60"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_ENCRYPTION_KEY
+        generateValue: true
+      # Set in the dashboard — point at the Neon *test* database:
       - key: DATABASE_URL
         sync: false
       - key: FRONTEND_URL

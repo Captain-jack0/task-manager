@@ -1,13 +1,21 @@
 # Deployment & DevOps
 
-Free, no-credit-card stack:
+Free, no-credit-card stack, with **two environments driven by two branches**:
 
 ```
-Frontend (Vercel)  ──►  Backend API (Render)  ──►  Postgres (Neon)
-        auto-deploy on push to main      auto-deploy on push to main
-        GitHub Actions run tests on every push / PR
-        DB migrations run automatically on each backend boot (alembic upgrade head)
+          dev  branch ──► DEV  env   (auto-deploys on every push)
+          test branch ──► TEST env   (manual "Deploy" — you control when)
+
+  each env:  Frontend (Vercel)  ──►  Backend API (Render)  ──►  Postgres (Neon)
+             GitHub Actions run tests on every push / PR
+             DB migrations run automatically on each backend boot (alembic upgrade head)
 ```
+
+**Branch flow:** work on a feature branch → PR into **`dev`** (auto-deploys to the
+dev env so you can try it live) → when it's stable, merge `dev` → **`test`** and
+click **Manual Deploy** on the test service in Render (a deliberate, controlled
+release to the test env). `main` stays as the stable trunk (promote to a prod env
+later the same way if you want a third).
 
 | Piece | Host | Free? | Notes |
 |-------|------|-------|-------|
@@ -32,44 +40,54 @@ Do these in order — each step needs a URL from the previous one.
    The backend strips `sslmode`/`channel_binding` and enables TLS itself, so the
    provider string works almost verbatim. Save this as your **`DATABASE_URL`**.
 
-### 2 · Backend — Render
+### 2 · Backend — Render (dev + test services)
 
-1. Sign up at [render.com](https://render.com) with GitHub (no card).
-2. **New → Blueprint** → connect this repo. Render reads `render.yaml` and creates
-   the `task-manager-api` web service (Docker, Frankfurt, free plan).
-3. Set the two secrets it asks for (Environment tab):
-   - `DATABASE_URL` → the Neon string from step 1.
-   - `FRONTEND_URL` → leave blank for now (fill in step 3 only if you use a custom
-     domain; the built-in CORS rule already allows any `*.vercel.app`).
-   - `JWT_SECRET` and `APP_ENCRYPTION_KEY` are **auto-generated** by `render.yaml`
-     — don't touch them. (The API refuses to boot in production without them.)
-4. Deploy. On boot the container runs `alembic upgrade head` automatically, so the
-   schema is created/updated with no manual step.
-5. Copy the service URL, e.g. `https://task-manager-api.onrender.com`. Check
-   `https://task-manager-api.onrender.com/health` returns `{"status":"ok"}`.
+1. In Neon, create **two databases** (or two branches of one project): one for
+   **dev**, one for **test**. Grab a `DATABASE_URL` for each (scheme
+   `postgresql+asyncpg://…`, as in step 1).
+2. Sign up at [render.com](https://render.com) with GitHub (no card).
+3. **New → Blueprint** → connect this repo. Render reads `render.yaml` and creates
+   **two** services:
+   - `task-manager-api-dev` — watches the **`dev`** branch, **autoDeploy: true**.
+   - `task-manager-api-test` — watches the **`test`** branch, **autoDeploy: false**.
+4. For **each** service set its secrets (Environment tab):
+   - `DATABASE_URL` → the matching Neon dev / test database.
+   - `FRONTEND_URL` → blank for now (only needed for a custom domain).
+   - `JWT_SECRET` and `APP_ENCRYPTION_KEY` are **auto-generated per service** —
+     don't touch them (the API refuses to boot in production without them).
+5. **dev** deploys itself on the next push to `dev`. For **test**, you click
+   **Manual Deploy → Deploy latest commit** on the `task-manager-api-test` service
+   whenever you want to release. Migrations (`alembic upgrade head`) run on boot.
+6. Note each service URL (e.g. `https://task-manager-api-dev.onrender.com`) and
+   check `/health` returns `{"status":"ok"}`.
 
 ### 3 · Frontend — Vercel
 
 1. Sign up at [vercel.com](https://vercel.com) with GitHub (no card).
 2. **Add New → Project** → import this repo.
 3. Set **Root Directory = `frontend`** (Vercel picks up `frontend/vercel.json`).
-4. Add an environment variable:
-   - `VITE_API_BASE_URL` → your Render URL from step 2 (e.g.
-     `https://task-manager-api.onrender.com`).
-5. Deploy. Note the URL, e.g. `https://task-manager.vercel.app`.
+4. Set the **Production Branch** to `test` (Settings → Git). Then Vercel serves
+   the `test` branch as production and gives every other branch (incl. `dev`) an
+   auto-updating **preview** URL.
+5. Point each env's frontend at the matching backend with **branch-specific env
+   vars** (Settings → Environment Variables — set a value + choose the branch):
+   - `VITE_API_BASE_URL` on branch `dev`  → `https://task-manager-api-dev.onrender.com`
+   - `VITE_API_BASE_URL` on branch `test` → `https://task-manager-api-test.onrender.com`
+6. Note the URLs (production = test branch; the `dev` preview URL is stable per branch).
 
-> If you later add a **custom domain** (not `*.vercel.app`), set `FRONTEND_URL` in
-> Render to it so CORS allows it, then redeploy the backend.
+> Custom domain (not `*.vercel.app`)? Set `FRONTEND_URL` on the matching Render
+> service so CORS allows it, then redeploy that service.
 
-### 4 · Gate deploys on green tests (branch protection)
+### 4 · Gate merges on green tests (branch protection)
 
-Deploys happen when `main` changes. To make sure only *tested* code reaches `main`:
+The dev env auto-deploys, so keep `dev` (and `test`) clean:
 
-- GitHub repo → **Settings → Branches → Add branch ruleset** for `main`:
+- GitHub repo → **Settings → Branches → Add branch ruleset** for `dev` **and** `test`:
   - Require a pull request before merging.
-  - Require status checks to pass: `backend-ci`, `frontend-ci` (and `mobile-ci`).
+  - Require status checks to pass: `backend-ci`, `frontend-ci`, `mobile-ci`.
 
-Now the flow is: branch → PR → CI must be green → merge → auto-deploy. ✅
+Flow: feature → PR → CI green → merge to **`dev`** (auto-deploys) → merge `dev`→`test`
+→ **Manual Deploy** the test service in Render. ✅
 
 ---
 
@@ -77,11 +95,11 @@ Now the flow is: branch → PR → CI must be green → merge → auto-deploy. �
 
 - **`.github/workflows/backend-ci.yml`** — ruff lint, mypy types, pytest with an
   **80 % coverage gate**, against a real Postgres service container.
-- **`.github/workflows/frontend-ci.yml`** — `tsc` type-check, vitest with coverage,
-  production build.
+- **`.github/workflows/frontend-ci.yml`** — `tsc` type-check, vitest, production build.
 - **`.github/workflows/mobile-ci.yml`** — `tsc` type-check + `expo-doctor`.
-- **Deploy** — Render (backend) and Vercel (frontend) each watch `main` and
-  redeploy on push. No deploy keys to manage.
+- **Deploy** — Render deploys the **dev** service on every push to `dev`; the
+  **test** service is deployed manually (autoDeploy off) so you control the release.
+  Vercel builds each branch (test = production, dev = preview).
 - **DB migrations** — `alembic upgrade head` on every backend boot (`Dockerfile`).
 
 ---
