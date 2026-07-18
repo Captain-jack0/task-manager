@@ -150,6 +150,13 @@ export function TasksPage() {
   const projects = projectList ?? [];
   const members = memberList ?? [];
   const existingProjectNames = new Set(projects.map((p) => p.name.toLowerCase()));
+  const importableRepos = (githubRepos ?? []).filter(
+    (r) => !existingProjectNames.has(r.name.toLowerCase()),
+  );
+  const allReposSelected =
+    importableRepos.length > 0 && importableRepos.every((r) => selectedRepos.has(r.name));
+  const toggleAllRepos = () =>
+    setSelectedRepos(allReposSelected ? new Set() : new Set(importableRepos.map((r) => r.name)));
   const tasks = tasksQuery.data?.data ?? [];
   const total = tasksQuery.data?.total ?? tasks.length;
 
@@ -392,6 +399,12 @@ export function TasksPage() {
           <p className="text-sm text-slate-500">Loading repositories…</p>
         ) : githubRepos && githubRepos.length > 0 ? (
           <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
+            {importableRepos.length > 0 && (
+              <label className="flex cursor-pointer items-center gap-2.5 border-b border-slate-100 px-2 py-1.5 text-sm font-medium dark:border-slate-800">
+                <input type="checkbox" checked={allReposSelected} onChange={toggleAllRepos} />
+                <span>Select all ({importableRepos.length})</span>
+              </label>
+            )}
             {githubRepos.map((r) => {
               const already = existingProjectNames.has(r.name.toLowerCase());
               return (

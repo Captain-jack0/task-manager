@@ -31,6 +31,11 @@ export function GithubImportModal({
     });
   };
 
+  const importable = (repos ?? []).filter((r) => !existingNames.has(r.name.toLowerCase()));
+  const allSelected = importable.length > 0 && importable.every((r) => selected.has(r.name));
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(importable.map((r) => r.name)));
+
   const doImport = async () => {
     const names = [...selected];
     if (names.length === 0) return;
@@ -57,6 +62,14 @@ export function GithubImportModal({
         <Text style={styles.muted}>Loading repositories…</Text>
       ) : repos && repos.length > 0 ? (
         <ScrollView style={styles.list}>
+          {importable.length > 0 && (
+            <Pressable onPress={toggleAll} style={[styles.row, styles.selectAll]}>
+              <View style={[styles.check, allSelected && styles.checkOn]}>
+                {allSelected && <Text style={styles.checkMark}>✓</Text>}
+              </View>
+              <Text style={styles.selectAllText}>Select all ({importable.length})</Text>
+            </Pressable>
+          )}
           {repos.map((r: GithubRepo) => {
             const already = existingNames.has(r.name.toLowerCase());
             const checked = already || selected.has(r.name);
@@ -101,6 +114,8 @@ const styles = StyleSheet.create({
   list: { maxHeight: 320 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
   rowDisabled: { opacity: 0.5 },
+  selectAll: { borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 2 },
+  selectAllText: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
   check: {
     width: 20,
     height: 20,
