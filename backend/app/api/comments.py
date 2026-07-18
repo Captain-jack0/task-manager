@@ -41,7 +41,7 @@ async def create_comment(
     current_user: CurrentUser,
     session: SessionDep,
 ) -> CommentOut:
-    await require_task(session, current_user, task_id)
+    await require_task(session, current_user, task_id, write=True)
     comment = await comment_repo.create(
         session, task_id=task_id, author_id=current_user.id, body=payload.body
     )
@@ -64,7 +64,7 @@ async def delete_comment(
     current_user: CurrentUser,
     session: SessionDep,
 ) -> None:
-    task = await require_task(session, current_user, task_id)
+    task = await require_task(session, current_user, task_id, write=True)
     comment = await comment_repo.get(session, comment_id=comment_id)
     if comment is None or comment.task_id != task_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")

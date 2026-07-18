@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
-from app.api.access import resolve_workspace
+from app.api.access import require_task, resolve_workspace
 from app.api.deps import CurrentUser, SessionDep
 from app.core.crypto import decrypt_secret
 from app.core.rate_limit import limiter
@@ -30,14 +30,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-async def _require_task(session: AsyncSession, user: User, task_id: UUID) -> Task:
-    """Fetch a task and ensure the current user is a member of its workspace."""
-    task = await task_repo.get_task(session, task_id=task_id)
-    if task is None or not await workspace_repo.is_member(
-        session, workspace_id=task.workspace_id, user_id=user.id
-    ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-    return task
+async def _require_task(
+    session: AsyncSession, user: User, task_id: UUID, *, write: bool = False
+) -> Task:
+    """Membership check (delegates to the shared helper); `write=True` also
+    forbids guests, who are read-only."""
+    return await require_task(session, user, task_id, write=write)
 
 
 async def _resolve_tags(session, *, tag_ids, user_id):
@@ -121,7 +119,7 @@ async def create_task(
     session: SessionDep,
     workspace_id: UUID | None = None,
 ) -> TaskOut:
-    ws_id = await resolve_workspace(session, current_user, workspace_id)
+    ws_id = await resolve_workspace(session, current_user, workspace_id, write=True)
     await _validate_project(session, payload.project_id, ws_id)
     await _validate_assignee(session, payload.assignee_id, ws_id)
     tags = await _resolve_tags(session, tag_ids=payload.tag_ids, user_id=current_user.id)
@@ -182,7 +180,7 @@ async def update_task(
     current_user: CurrentUser,
     session: SessionDep,
 ) -> TaskOut:
-    task = await _require_task(session, current_user, task_id)
+    task = await _require_task(session, current_user, task_id, write=True)
 
     update_data = payload.model_dump(exclude_unset=True, exclude={"tag_ids"})
     if "project_id" in update_data:
@@ -207,7 +205,7 @@ async def snooze_task(
     task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> TaskOut:
     """Push a task to a later day without guilt, and count the postponement."""
-    task = await _require_task(session, current_user, task_id)
+    task = await _require_task(session, current_user, task_id, write=True)
 
     now = datetime.now(timezone.utc)
     if task.due_date is not None and task.due_date > now:
@@ -226,7 +224,7 @@ async def reset_snooze(
 ) -> TaskOut:
     """Clear the postponement counter — used when the user acts on a task that
     the procrastination detector flagged."""
-    task = await _require_task(session, current_user, task_id)
+    task = await _require_task(session, current_user, task_id, write=True)
     task.snooze_count = 0
     updated = await task_repo.update_task(session, task=task, tags=None)
     return TaskOut.model_validate(updated)
@@ -238,7 +236,7 @@ async def create_github_issue(
     request: Request, task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> TaskOut:
     """Open the task as a GitHub issue in the user's connected repo."""
-    task = await _require_task(session, current_user, task_id)
+    task = await _require_task(session, current_user, task_id, write=True)
     if task.github_issue_url:
         return TaskOut.model_validate(task)  # already linked — idempotent
 
@@ -267,7 +265,7 @@ async def sync_github_issue(
     request: Request, task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> TaskOut:
     """Pull the linked GitHub issue's state; if it's closed, move the task to Done."""
-    task = await _require_task(session, current_user, task_id)
+    task = await _require_task(session, current_user, task_id, write=True)
     if not task.github_issue_number:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -292,5 +290,5 @@ async def sync_github_issue(
 async def delete_task(
     task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> None:
-    task = await _require_task(session, current_user, task_id)
+    task = await _require_task(session, current_user, task_id, write=True)
     await task_repo.delete_task(session, task=task)
