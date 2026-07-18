@@ -27,3 +27,11 @@ export function useCreateGithubIssue() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
   });
 }
+
+export function useSyncGithubIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => tasksApi.syncGithubIssue(taskId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+  });
+}

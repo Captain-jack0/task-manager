@@ -3,6 +3,7 @@ import type { Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
+import { scheduleIso, dateStrToIso } from '@/lib/schedule';
 import { NEXT_STATUS, STATUS_LABEL, isCompleted } from './status';
 
 const PRIORITY_DOT: Record<Task['priority'], string> = {
@@ -10,21 +11,6 @@ const PRIORITY_DOT: Record<Task['priority'], string> = {
   medium: 'bg-amber-500',
   high: 'bg-red-500',
 };
-
-// ISO for `daysAhead` days from now at 17:00 local — used by the one-tap
-// "Schedule" shortcuts on dateless tasks (also puts them on the calendar feed).
-function scheduleIso(daysAhead: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + daysAhead);
-  d.setHours(17, 0, 0, 0);
-  return d.toISOString();
-}
-
-// ISO (17:00 local) for a picked YYYY-MM-DD, for the "Pick a day" date input.
-function dateStrToIso(yyyyMmDd: string): string {
-  const [y, m, d] = yyyyMmDd.split('-').map(Number);
-  return new Date(y, m - 1, d, 17, 0, 0, 0).toISOString();
-}
 
 interface Props {
   task: Task;

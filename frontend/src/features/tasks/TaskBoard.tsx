@@ -5,6 +5,8 @@ import { extractErrorMessage } from '@/api/client';
 import type { Member, Project, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { cn } from '@/lib/cn';
+import { scheduleIso, dateStrToIso } from '@/lib/schedule';
+import { formatDate } from '@/lib/date';
 import { useUpdateTask } from './useTasks';
 import { STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 
@@ -37,6 +39,13 @@ export function TaskBoard({
     updateMutation.mutate(
       { id, input: { status } },
       { onError: (err) => toast.error(extractErrorMessage(err, 'Update failed')) },
+    );
+  };
+
+  const schedule = (id: string, iso: string) => {
+    updateMutation.mutate(
+      { id, input: { due_date: iso } },
+      { onError: (err) => toast.error(extractErrorMessage(err, 'Could not schedule')) },
     );
   };
 
@@ -115,6 +124,43 @@ export function TaskBoard({
                       {task.estimated_minutes != null && task.energy_level && ' · '}
                       {task.energy_level && `${task.energy_level} energy`}
                     </p>
+                  )}
+                  {!isCompleted(task.status) && (
+                    <div
+                      className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400"
+                      onClick={(e) => e.stopPropagation()}
+                      draggable
+                      onDragStart={(e) => e.preventDefault()}
+                    >
+                      {task.due_date && (
+                        <span className="font-medium text-slate-500 dark:text-slate-300">
+                          Due {formatDate(task.due_date)}
+                        </span>
+                      )}
+                      <span>{task.due_date ? '· Reschedule:' : '📅 Schedule:'}</span>
+                      {[
+                        { label: 'Today', days: 0 },
+                        { label: 'Tomorrow', days: 1 },
+                        { label: 'Next week', days: 7 },
+                      ].map((opt) => (
+                        <button
+                          key={opt.label}
+                          type="button"
+                          onClick={() => schedule(task.id, scheduleIso(opt.days))}
+                          className="font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                      <input
+                        type="date"
+                        aria-label="Pick a due date"
+                        onChange={(e) =>
+                          e.currentTarget.value && schedule(task.id, dateStrToIso(e.currentTarget.value))
+                        }
+                        className="cursor-pointer rounded border border-slate-200 bg-transparent px-1 text-slate-500 dark:border-slate-700 dark:text-slate-400"
+                      />
+                    </div>
                   )}
                   {task.project_id && projectById.has(task.project_id) && (
                     <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-slate-400">

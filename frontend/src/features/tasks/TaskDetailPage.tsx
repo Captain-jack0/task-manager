@@ -14,7 +14,13 @@ import { CommentsSection } from './CommentsSection';
 import { TaskForm } from './TaskForm';
 import type { TaskFormValues } from './schemas';
 import { STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
-import { useCreateGithubIssue, useDeleteTask, useTask, useUpdateTask } from './useTasks';
+import {
+  useCreateGithubIssue,
+  useDeleteTask,
+  useSyncGithubIssue,
+  useTask,
+  useUpdateTask,
+} from './useTasks';
 
 const PRIORITY_DOT: Record<'low' | 'medium' | 'high', string> = {
   low: 'bg-slate-400',
@@ -30,6 +36,7 @@ export function TaskDetailPage() {
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
   const createIssue = useCreateGithubIssue();
+  const syncIssue = useSyncGithubIssue();
   const { data: github } = useGithubStatus();
   const { data: projects } = useProjects(taskQuery.data?.workspace_id);
   const { data: members } = useMembers(taskQuery.data?.workspace_id);
@@ -102,6 +109,16 @@ export function TaskDetailPage() {
           t.github_issue_number ? `Opened issue #${t.github_issue_number}` : 'Issue opened',
         ),
       onError: (err) => toast.error(extractErrorMessage(err, 'Could not open issue')),
+    });
+  };
+
+  const handleSyncIssue = () => {
+    syncIssue.mutate(task.id, {
+      onSuccess: (t) =>
+        toast.success(
+          t.status === 'done' ? 'Issue closed → moved to Done (Test)' : 'Issue still open',
+        ),
+      onError: (err) => toast.error(extractErrorMessage(err, 'Could not sync issue')),
     });
   };
 
@@ -199,14 +216,25 @@ export function TaskDetailPage() {
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
             <span className="text-xs font-medium text-slate-500">GitHub</span>
             {task.github_issue_url ? (
-              <a
-                href={task.github_issue_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm font-medium text-slate-900 underline underline-offset-2 dark:text-white"
-              >
-                Issue #{task.github_issue_number} ↗
-              </a>
+              <>
+                <a
+                  href={task.github_issue_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-slate-900 underline underline-offset-2 dark:text-white"
+                >
+                  Issue #{task.github_issue_number} ↗
+                </a>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleSyncIssue}
+                  isLoading={syncIssue.isPending}
+                  title="If the issue is closed on GitHub, move this task to Done"
+                >
+                  Sync
+                </Button>
+              </>
             ) : github?.connected ? (
               <Button
                 size="sm"

@@ -8,7 +8,11 @@ import { DueField } from '../features/tasks/DueField';
 import { useDeleteTask, useSnooze, useTask, useUpdateTask } from '../features/tasks/useTasks';
 import { useProjects } from '../features/projects/useProjects';
 import { useMembers } from '../features/workspaces/useMembers';
-import { useCreateGithubIssue, useGithubStatus } from '../features/integrations/useGithub';
+import {
+  useCreateGithubIssue,
+  useGithubStatus,
+  useSyncGithubIssue,
+} from '../features/integrations/useGithub';
 import { CommentsSection } from '../features/comments/CommentsSection';
 import { useAuthStore } from '../store/authStore';
 import type { RootStackParamList } from '../navigation';
@@ -49,6 +53,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   const remove = useDeleteTask();
   const github = useGithubStatus();
   const createIssue = useCreateGithubIssue();
+  const syncIssue = useSyncGithubIssue();
 
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
@@ -246,13 +251,36 @@ export function TaskDetailScreen({ route, navigation }: Props) {
       <View style={{ gap: 6 }}>
         <Text style={styles.sectionLabel}>GitHub</Text>
         {task.github_issue_url ? (
-          <AppButton
-            title={`View issue #${task.github_issue_number ?? ''}`}
-            variant="secondary"
-            onPress={() => {
-              if (task.github_issue_url) Linking.openURL(task.github_issue_url);
-            }}
-          />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <AppButton
+                title={`View issue #${task.github_issue_number ?? ''}`}
+                variant="secondary"
+                onPress={() => {
+                  if (task.github_issue_url) Linking.openURL(task.github_issue_url);
+                }}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <AppButton
+                title="Sync"
+                variant="secondary"
+                loading={syncIssue.isPending}
+                onPress={() =>
+                  syncIssue.mutate(task.id, {
+                    onSuccess: (t) =>
+                      Alert.alert(
+                        'GitHub sync',
+                        t.status === 'done'
+                          ? 'Issue closed → task moved to Done (Test).'
+                          : 'Issue is still open.',
+                      ),
+                    onError: (e) => Alert.alert('Could not sync', extractErrorMessage(e)),
+                  })
+                }
+              />
+            </View>
+          </View>
         ) : github.data?.connected ? (
           <AppButton
             title="Open as GitHub issue"

@@ -56,6 +56,26 @@ async def create_issue(token: str, repo: str, *, title: str, body: str) -> dict:
     )
 
 
+async def get_issue_state(token: str, repo: str, number: int) -> str:
+    """Return the linked issue's state — 'open' or 'closed'."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        try:
+            resp = await client.get(
+                f"{GITHUB_API}/repos/{repo}/issues/{number}", headers=_headers(token)
+            )
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY, detail="Could not reach GitHub"
+            ) from exc
+    if resp.status_code == 200:
+        return str(resp.json().get("state", "open"))
+    _raise_for_access(resp.status_code)
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=f"GitHub returned an unexpected status ({resp.status_code})",
+    )
+
+
 async def list_repos(token: str) -> list[dict]:
     """List repositories the token can access (most-recently-updated first)."""
     async with httpx.AsyncClient(timeout=10) as client:

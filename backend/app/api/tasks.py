@@ -261,6 +261,33 @@ async def create_github_issue(
     return TaskOut.model_validate(updated)
 
 
+@router.post("/{task_id}/github-sync", response_model=TaskOut)
+@limiter.limit("30/minute")
+async def sync_github_issue(
+    request: Request, task_id: UUID, current_user: CurrentUser, session: SessionDep
+) -> TaskOut:
+    """Pull the linked GitHub issue's state; if it's closed, move the task to Done."""
+    task = await _require_task(session, current_user, task_id)
+    if not task.github_issue_number:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This task isn't linked to a GitHub issue",
+        )
+    integration = await integration_repo.get_github(session, user_id=current_user.id)
+    if integration is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Connect GitHub first"
+        )
+
+    state = await github.get_issue_state(
+        decrypt_secret(integration.token), integration.repo, task.github_issue_number
+    )
+    if state == "closed" and task.status not in (TaskStatus.DONE, TaskStatus.CLOSED):
+        task.status = TaskStatus.DONE
+        task = await task_repo.update_task(session, task=task, tags=None)
+    return TaskOut.model_validate(task)
+
+
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: UUID, current_user: CurrentUser, session: SessionDep
