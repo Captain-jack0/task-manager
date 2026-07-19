@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.config import get_settings
 from app.db.base import Base
+from app.db.session import _engine_args
 from app.models import Tag, Task, User, task_tags  # noqa: F401  ensure metadata populated
 
 config = context.config
@@ -16,7 +17,12 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Normalise the URL the same way the app engine does — strip libpq's sslmode/
+# channel_binding (asyncpg rejects them) and carry the SSL context in connect_args.
+# Without this, `alembic upgrade head` against Neon/managed Postgres dies with
+# "connect() got an unexpected keyword argument 'sslmode'".
+_db_url, _connect_args = _engine_args(settings.database_url)
+config.set_main_option("sqlalchemy.url", _db_url)
 
 target_metadata = Base.metadata
 
@@ -44,6 +50,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_connect_args,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
