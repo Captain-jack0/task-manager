@@ -11,7 +11,8 @@ const baseURL =
 export const apiClient: AxiosInstance = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15_000,
+  // Render free tier cold-starts in ~30-50s after idle, so allow for it.
+  timeout: 60_000,
 });
 
 apiClient.interceptors.request.use((config) => {
