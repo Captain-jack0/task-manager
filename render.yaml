@@ -66,3 +66,33 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+
+  # --- PRODUCTION: manual deploy only, the live env behind the custom domain ---
+  - type: web
+    name: task-manager-api-prod
+    runtime: docker
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: production
+    autoDeploy: false
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "60"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_ENCRYPTION_KEY
+        generateValue: true
+      # Set in the dashboard — point at the Neon *production* database:
+      - key: DATABASE_URL
+        sync: false
+      # The live custom domain (for CORS), e.g. https://task.captainmery.com
+      - key: FRONTEND_URL
+        sync: false
