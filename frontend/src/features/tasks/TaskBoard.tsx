@@ -58,6 +58,7 @@ export function TaskBoard({
             key={col.status}
             onDragOver={(e) => {
               e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
               setOverStatus(col.status);
             }}
             onDragLeave={() => setOverStatus((s) => (s === col.status ? null : s))}
@@ -69,9 +70,9 @@ export function TaskBoard({
               setOverStatus(null);
             }}
             className={cn(
-              'flex min-w-[240px] flex-1 flex-col rounded-2xl border p-3 transition-colors',
+              'flex min-w-[240px] flex-1 flex-col rounded-2xl border p-3 transition-all duration-200',
               overStatus === col.status
-                ? 'border-slate-400 bg-slate-100/70 dark:border-slate-600 dark:bg-slate-800/50'
+                ? 'scale-[1.01] border-slate-400 bg-slate-100/80 ring-2 ring-slate-400/40 dark:border-slate-500 dark:bg-slate-800/60 dark:ring-slate-500/40'
                 : 'border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40',
             )}
             data-testid={`board-column-${col.status}`}
@@ -97,17 +98,25 @@ export function TaskBoard({
                     setOverStatus(null);
                   }}
                   className={cn(
-                    'cursor-grab rounded-xl border border-slate-200 bg-white p-3 transition-shadow hover:shadow-sm active:cursor-grabbing dark:border-slate-800 dark:bg-slate-900',
-                    dragId === task.id && 'opacity-50',
+                    // Lift on hover + tilt while dragging so the card clearly
+                    // reads as a movable object, not static text.
+                    'group cursor-grab select-none rounded-xl border border-slate-200 bg-white p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5 active:cursor-grabbing dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700',
+                    dragId === task.id && 'rotate-2 scale-95 border-dashed opacity-40',
                     isCompleted(task.status) && 'opacity-60',
                   )}
                   data-testid="board-card"
                 >
                   <div className="flex items-start justify-between gap-2">
+                    <span
+                      aria-hidden
+                      className="mt-0.5 text-xs leading-none text-slate-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-slate-600"
+                    >
+                      ⠿
+                    </span>
                     <Link
                       to={`/tasks/${task.id}`}
                       className={cn(
-                        'text-sm font-medium leading-snug tracking-tight hover:text-slate-500 dark:hover:text-slate-400',
+                        'min-w-0 flex-1 text-sm font-medium leading-snug tracking-tight hover:text-slate-500 dark:hover:text-slate-400',
                         isCompleted(task.status) && 'line-through',
                       )}
                     >
