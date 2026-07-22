@@ -91,6 +91,13 @@ export function TaskBoard({
                   onDragStart={(e) => {
                     e.dataTransfer.setData('text/plain', task.id);
                     e.dataTransfer.effectAllowed = 'move';
+                    // Ghost = the whole card, anchored where it was grabbed.
+                    const r = e.currentTarget.getBoundingClientRect();
+                    e.dataTransfer.setDragImage(
+                      e.currentTarget,
+                      e.clientX - r.left,
+                      e.clientY - r.top,
+                    );
                     setDragId(task.id);
                   }}
                   onDragEnd={() => {
@@ -115,6 +122,10 @@ export function TaskBoard({
                     </span>
                     <Link
                       to={`/tasks/${task.id}`}
+                      // Anchors are natively draggable; left on, a drag starting
+                      // on the title becomes a LINK drag (URL-box ghost) instead
+                      // of the card's drag.
+                      draggable={false}
                       className={cn(
                         'min-w-0 flex-1 text-sm font-medium leading-snug tracking-tight hover:text-slate-500 dark:hover:text-slate-400',
                         isCompleted(task.status) && 'line-through',
