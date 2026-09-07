@@ -15,4 +15,8 @@ export const authApi = {
     const { data } = await apiClient.post<TokenResponse>('/auth/login', input);
     return data;
   },
+  // The reset link in the email opens the web app; the API is the same.
+  forgotPassword: async (email: string): Promise<void> => {
+    await apiClient.post('/auth/forgot-password', { email });
+  },
 };

@@ -115,6 +115,7 @@ Flow: feature → PR → CI green → merge to **`dev`** (auto-deploys) → merg
 | `APP_ENCRYPTION_KEY` | random | `render.yaml` (auto) |
 | `ENVIRONMENT` | `production` | `render.yaml` |
 | `FRONTEND_URL` | your custom domain (optional) | you |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | your mail provider — required for password-reset emails (unset → reset mails are not sent) | you |
 
 **Frontend (Vercel):**
 
