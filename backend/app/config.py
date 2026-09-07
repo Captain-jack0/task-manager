@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     # order-guaranteed, so prefer setting this explicitly in production).
     app_public_url: str = Field(default="")
     environment: Literal["development", "production", "test"] = Field(default="development")
+    # Outgoing mail (password-reset links). Leave SMTP_HOST empty in local dev
+    # and the link is logged instead of sent.
+    smtp_host: str = Field(default="")
+    smtp_port: int = Field(default=587)
+    smtp_user: str = Field(default="")
+    smtp_password: str = Field(default="")
+    smtp_from: str = Field(default="")
 
     @model_validator(mode="after")
     def _guard_production_secrets(self) -> "Settings":
@@ -47,6 +54,13 @@ class Settings(BaseSettings):
         on Render to support preview deployments.
         """
         return [o.strip().rstrip("/") for o in self.frontend_url.split(",") if o.strip()]
+
+    @property
+    def public_app_url(self) -> str:
+        """Frontend base URL for links we hand out (iCal task links, reset emails)."""
+        return self.app_public_url.rstrip("/") or (
+            self.cors_origins[0] if self.cors_origins else ""
+        )
 
 
 @lru_cache
