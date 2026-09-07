@@ -9,7 +9,7 @@ export interface ParsedQuickAdd {
   due_date?: string; // ISO
 }
 
-const PRIORITY: Record<string, TaskPriority> = {
+export const PRIORITY: Record<string, TaskPriority> = {
   high: 'high',
   yüksek: 'high',
   yuksek: 'high',
@@ -21,7 +21,7 @@ const PRIORITY: Record<string, TaskPriority> = {
   dusuk: 'low',
 };
 
-const ENERGY: Record<string, TaskEnergy> = {
+export const ENERGY: Record<string, TaskEnergy> = {
   high: 'high',
   yüksek: 'high',
   yuksek: 'high',

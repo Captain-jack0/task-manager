@@ -43,10 +43,7 @@ async def calendar_feed(request: Request, token: str, session: SessionDep) -> Re
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calendar not found")
 
     tasks = await calendar_repo.tasks_for_calendar(session, user_id=user.id)
-    settings = get_settings()
-    app_url = settings.app_public_url or (
-        settings.cors_origins[0] if settings.cors_origins else ""
-    )
+    app_url = get_settings().public_app_url
     body = ics.build_calendar(tasks, now=datetime.now(UTC), app_url=app_url)
     return Response(
         content=body,

@@ -4,6 +4,8 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { LandingPage } from '@/features/landing/LandingPage';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { RegisterPage } from '@/features/auth/RegisterPage';
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { TasksPage } from '@/features/tasks/TasksPage';
 import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
 import { ReviewPage } from '@/features/review/ReviewPage';
@@ -13,6 +15,9 @@ export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  // Linked from the reset email: /reset-password?token=…
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     // Pathless layout: the authenticated app keeps its existing URLs
     // (/tasks, /review, …) so calendar-feed and GitHub links stay valid.

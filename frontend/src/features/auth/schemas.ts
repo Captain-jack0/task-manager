@@ -9,3 +9,9 @@ export const credentialsSchema = z.object({
 });
 
 export type CredentialsForm = z.infer<typeof credentialsSchema>;
+
+export const emailSchema = credentialsSchema.pick({ email: true });
+export type EmailForm = z.infer<typeof emailSchema>;
+
+export const newPasswordSchema = credentialsSchema.pick({ password: true });
+export type NewPasswordForm = z.infer<typeof newPasswordSchema>;

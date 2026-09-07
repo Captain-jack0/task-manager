@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { authApi, type AuthCredentials } from '@/api/auth';
+import { authApi, type AuthCredentials, type ResetPasswordInput } from '@/api/auth';
 import { useAuthStore } from './authStore';
 
 export function useLogin() {
@@ -14,6 +14,21 @@ export function useRegister() {
   const setSession = useAuthStore((s) => s.setSession);
   return useMutation({
     mutationFn: (creds: AuthCredentials) => authApi.register(creds),
+    onSuccess: (data) => setSession(data.access_token, data.user),
+  });
+}
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (email: string) => authApi.forgotPassword(email),
+  });
+}
+
+/** A successful reset signs the user straight in, like login. */
+export function useResetPassword() {
+  const setSession = useAuthStore((s) => s.setSession);
+  return useMutation({
+    mutationFn: (input: ResetPasswordInput) => authApi.resetPassword(input),
     onSuccess: (data) => setSession(data.access_token, data.user),
   });
 }
