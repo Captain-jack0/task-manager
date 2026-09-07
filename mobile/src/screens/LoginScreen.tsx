@@ -20,6 +20,7 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const submit = async () => {
     if (!email.trim() || !password) {
@@ -36,6 +37,20 @@ export function LoginScreen() {
       setError(extractErrorMessage(err, 'Could not sign in'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const forgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Enter your email first.');
+      return;
+    }
+    setError(null);
+    try {
+      await authApi.forgotPassword(email.trim());
+      setNotice('If that email is registered, a reset link is on its way. Open it to choose a new password.');
+    } catch (err) {
+      setError(extractErrorMessage(err, 'Could not send reset link'));
     }
   };
 
@@ -71,6 +86,7 @@ export function LoginScreen() {
           />
 
           {error && <Text style={styles.error}>{error}</Text>}
+          {notice && <Text style={styles.notice}>{notice}</Text>}
 
           <AppButton
             title={mode === 'login' ? 'Sign in' : 'Create account'}
@@ -83,8 +99,14 @@ export function LoginScreen() {
             onPress={() => {
               setMode(mode === 'login' ? 'register' : 'login');
               setError(null);
+              setNotice(null);
             }}
           />
+          {mode === 'login' && (
+            <Text style={styles.link} onPress={forgotPassword}>
+              Forgot password?
+            </Text>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -97,4 +119,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 32, fontWeight: '800', color: colors.text },
   subtitle: { fontSize: 15, color: colors.muted },
   error: { color: colors.danger, fontSize: 13 },
+  notice: { color: colors.muted, fontSize: 13 },
+  link: { color: colors.muted, fontSize: 13, textAlign: 'center', padding: 8 },
 });
