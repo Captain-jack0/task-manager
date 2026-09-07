@@ -5,6 +5,7 @@ import { Input } from '@/components/Input';
 import { extractErrorMessage } from '@/api/client';
 import { useCreateTag, useTags } from '@/features/tags/useTags';
 import { formatDate } from '@/lib/date';
+import { ImportTasksModal } from './ImportTasksModal';
 import { parseQuickAdd } from './quickParse';
 import { useCreateTask } from './useTasks';
 
@@ -28,6 +29,7 @@ function dueLabel(iso: string): string {
 export function QuickAdd() {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const { data: tags } = useTags();
   const createTag = useCreateTag();
   const createTask = useCreateTask();
@@ -89,7 +91,11 @@ export function QuickAdd() {
         <Button onClick={() => void submit()} isLoading={submitting} disabled={!parsed.title.trim()}>
           Add
         </Button>
+        <Button variant="secondary" onClick={() => setImportOpen(true)} title="Import tasks from a Markdown file">
+          Import
+        </Button>
       </div>
+      <ImportTasksModal open={importOpen} onClose={() => setImportOpen(false)} />
       {text.trim() && hasMeta && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
           <span className="text-slate-500 dark:text-slate-400">{parsed.title || '(no title)'}</span>
