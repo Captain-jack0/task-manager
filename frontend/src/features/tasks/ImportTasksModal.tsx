@@ -8,6 +8,7 @@ import { projectsApi } from '@/api/projects';
 import { tagsApi } from '@/api/tags';
 import { tasksApi } from '@/api/tasks';
 import { PROJECTS_KEY, useProjects } from '@/features/projects/useProjects';
+import { useSprints } from '@/features/sprints/useSprints';
 import { useTags } from '@/features/tags/useTags';
 import { useMembers } from '@/features/workspaces/useMembers';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
@@ -46,12 +47,14 @@ export function ImportTasksModal({ open, onClose }: Props) {
   const { data: tags } = useTags();
   const { data: projects } = useProjects(workspaceId ?? undefined);
   const { data: members } = useMembers(workspaceId ?? undefined);
+  const { data: sprints } = useSprints(workspaceId ?? undefined);
 
   const { tasks, errors } = useMemo(() => parseTaskMarkdown(text), [text]);
 
   const memberEmails = new Set((members ?? []).map((m) => norm(m.email)));
   const projectNames = new Set((projects ?? []).map((p) => norm(p.name)));
   const tagNames = new Set((tags ?? []).map((t) => norm(t.name)));
+  const sprintNames = new Set((sprints ?? []).map((s) => norm(s.name)));
   const unique = (values: (string | null)[]) =>
     [...new Set(values.filter((v): v is string => Boolean(v)))];
   const unknownAssignees = unique(
@@ -61,6 +64,9 @@ export function ImportTasksModal({ open, onClose }: Props) {
     tasks.map((t) => (t.projectName && !projectNames.has(norm(t.projectName)) ? t.projectName : null)),
   );
   const newTags = unique(tasks.flatMap((t) => t.tagNames.filter((n) => !tagNames.has(norm(n)))));
+  const unknownSprints = unique(
+    tasks.map((t) => (t.sprintName && !sprintNames.has(norm(t.sprintName)) ? t.sprintName : null)),
+  );
   const notes = [...errors, ...tasks.flatMap((t) => t.warnings)];
 
   const loadFile = async (file: File | undefined) => {
@@ -78,6 +84,7 @@ export function ImportTasksModal({ open, onClose }: Props) {
     const projectIds = new Map((projects ?? []).map((p) => [norm(p.name), p.id]));
     const tagIds = new Map((tags ?? []).map((t) => [norm(t.name), t.id]));
     const memberIds = new Map((members ?? []).map((m) => [norm(m.email), m.user_id]));
+    const sprintIds = new Map((sprints ?? []).map((s) => [norm(s.name), s.id]));
     const failed: string[] = [];
 
     for (const [i, task] of tasks.entries()) {
@@ -100,6 +107,7 @@ export function ImportTasksModal({ open, onClose }: Props) {
             estimated_minutes: task.estimated_minutes,
             energy_level: task.energy,
             project_id: projectId,
+            sprint_id: task.sprintName ? (sprintIds.get(norm(task.sprintName)) ?? null) : null,
             assignee_id: task.assignee ? (memberIds.get(norm(task.assignee)) ?? null) : null,
             tag_ids: tagIdList,
           },
@@ -115,6 +123,7 @@ export function ImportTasksModal({ open, onClose }: Props) {
       qc.invalidateQueries({ queryKey: TASKS_KEY }),
       qc.invalidateQueries({ queryKey: PROJECTS_KEY }),
       qc.invalidateQueries({ queryKey: ['tags'] }),
+      qc.invalidateQueries({ queryKey: ['sprints'] }),
     ]);
     setProgress(null);
     const ok = tasks.length - failed.length;
@@ -185,8 +194,9 @@ export function ImportTasksModal({ open, onClose }: Props) {
         <p className="text-xs text-slate-400 dark:text-slate-500">
           One block per task. Fields: Title, Description, Status (To do / In progress / Blocked /
           Done / Closed), Priority and Energy (Low / Medium / High), Due date (DD.MM.YYYY), Project,
-          Assignee (member email or Unassigned), Est. minutes, Tags (comma-separated). Turkish field
-          names work too. Missing projects and tags are created for you.
+          Sprint (an existing sprint's name), Assignee (member email or Unassigned), Est. minutes,
+          Tags (comma-separated). Turkish field names work too. Missing projects and tags are
+          created for you.
         </p>
 
         {text.trim() && (
@@ -201,6 +211,12 @@ export function ImportTasksModal({ open, onClose }: Props) {
             )}
             {newTags.length > 0 && (
               <p className="text-slate-500 dark:text-slate-400">New tags: {newTags.join(', ')}</p>
+            )}
+            {unknownSprints.length > 0 && (
+              <p className="text-amber-700 dark:text-amber-400">
+                Sprints not found (create them first), tasks stay in the backlog:{' '}
+                {unknownSprints.join(', ')}
+              </p>
             )}
             {unknownAssignees.length > 0 && (
               <p className="text-amber-700 dark:text-amber-400">

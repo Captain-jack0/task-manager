@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn';
 import type { TaskStatus } from '@/types/api';
 import { useGithubStatus } from '@/features/integrations/useGithub';
 import { useProjects } from '@/features/projects/useProjects';
+import { useSprints } from '@/features/sprints/useSprints';
 import { useMembers } from '@/features/workspaces/useMembers';
 import { CommentsSection } from './CommentsSection';
 import { TaskForm } from './TaskForm';
@@ -39,6 +40,7 @@ export function TaskDetailPage() {
   const syncIssue = useSyncGithubIssue();
   const { data: github } = useGithubStatus();
   const { data: projects } = useProjects(taskQuery.data?.workspace_id);
+  const { data: sprints } = useSprints(taskQuery.data?.workspace_id);
   const { data: members } = useMembers(taskQuery.data?.workspace_id);
 
   if (taskQuery.isLoading) return <p className="text-sm text-slate-500">Loading…</p>;
@@ -55,6 +57,7 @@ export function TaskDetailPage() {
   const task = taskQuery.data;
   const overdue = !isCompleted(task.status) && isOverdue(task.due_date);
   const project = task.project_id ? projects?.find((p) => p.id === task.project_id) : undefined;
+  const sprint = task.sprint_id ? sprints?.find((s) => s.id === task.sprint_id) : undefined;
   const assignee = task.assignee_id ? members?.find((m) => m.user_id === task.assignee_id) : undefined;
 
   const handleSave = (values: TaskFormValues) => {
@@ -70,6 +73,7 @@ export function TaskDetailPage() {
           energy_level: values.energy_level || null,
           estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
           project_id: values.project_id || null,
+          sprint_id: values.sprint_id || null,
           assignee_id: values.assignee_id || null,
           tag_ids: values.tag_ids,
         },
@@ -177,6 +181,12 @@ export function TaskDetailPage() {
                   style={{ backgroundColor: project.color ?? '#94a3b8' }}
                 />
                 {project.name}
+              </span>
+            )}
+            {sprint && (
+              <span className="inline-flex items-center gap-1.5" title={`${sprint.start_date} → ${sprint.end_date}`}>
+                <span aria-hidden="true">⟳</span>
+                {sprint.name}
               </span>
             )}
             {assignee && (

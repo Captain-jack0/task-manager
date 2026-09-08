@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Modal } from '@/components/Modal';
 import { EmptyState } from '@/components/EmptyState';
 import { extractErrorMessage } from '@/api/client';
-import type { TaskStatus } from '@/types/api';
+import type { Sprint, SprintCreateInput, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { useTags, useDeleteTag } from '@/features/tags/useTags';
 import { useCreateProject, useDeleteProject, useProjects } from '@/features/projects/useProjects';
+import { SprintForm } from '@/features/sprints/SprintForm';
+import { SprintSidebar, type SprintFilter } from '@/features/sprints/SprintSidebar';
+import { useCreateSprint, useDeleteSprint, useSprints } from '@/features/sprints/useSprints';
 import { useGithubRepos, useGithubStatus } from '@/features/integrations/useGithub';
 import { useMembers } from '@/features/workspaces/useMembers';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
@@ -17,10 +20,12 @@ import { QuickAdd } from './QuickAdd';
 import { StuckTasksNudge } from './StuckTasksNudge';
 import { SuggestPanel } from './SuggestPanel';
 import { TaskBoard } from './TaskBoard';
+import { TaskFilterBar } from './TaskFilterBar';
 import { TaskForm } from './TaskForm';
 import { TaskList } from './TaskList';
 import type { TaskFormValues } from './schemas';
 import { STATUS_LABEL, STATUS_ORDER } from './status';
+import { DEFAULT_TASK_FILTERS, hasActiveFilters, toQuery, type TaskFilterState } from './taskFilters';
 import { useCreateTask, useTasks } from './useTasks';
 
 const STATUS_OPTIONS: { value: TaskStatus | 'all'; label: string }[] = [
@@ -37,6 +42,11 @@ export function TasksPage() {
   const [view, setView] = useState<'list' | 'board'>('list');
   const [importOpen, setImportOpen] = useState(false);
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState<TaskFilterState>(DEFAULT_TASK_FILTERS);
+  const [sprintFilter, setSprintFilter] = useState<SprintFilter>(undefined);
+  const [sprintFormOpen, setSprintFormOpen] = useState(false);
+  // Memoised so the "now"-relative due ranges don't change the query key every render.
+  const fieldQuery = useMemo(() => toQuery(filters), [filters]);
 
   const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? undefined;
 
@@ -46,6 +56,9 @@ export function TasksPage() {
   const { data: memberList } = useMembers(workspaceId);
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
+  const { data: sprintList } = useSprints(workspaceId);
+  const createSprint = useCreateSprint();
+  const deleteSprint = useDeleteSprint();
   const { data: githubStatus } = useGithubStatus();
   const githubConnected = githubStatus?.connected ?? false;
   const { data: githubRepos, isLoading: reposLoading } = useGithubRepos(
@@ -58,6 +71,9 @@ export function TasksPage() {
     tag_id: tagFilter,
     project_id: projectFilter,
     search: search || undefined,
+    sprint_id: sprintFilter && sprintFilter !== 'backlog' ? sprintFilter : undefined,
+    backlog: sprintFilter === 'backlog' ? true : undefined,
+    ...fieldQuery,
     limit: 100,
   });
   const createTask = useCreateTask();
@@ -73,6 +89,7 @@ export function TasksPage() {
         energy_level: values.energy_level || null,
         estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
         project_id: values.project_id || null,
+        sprint_id: values.sprint_id || null,
         assignee_id: values.assignee_id || null,
         tag_ids: values.tag_ids,
       },
@@ -147,6 +164,28 @@ export function TasksPage() {
     }
   };
 
+  const handleCreateSprint = (values: SprintCreateInput) => {
+    createSprint.mutate(values, {
+      onSuccess: (s) => {
+        toast.success(`Sprint "${s.name}" created`);
+        setSprintFormOpen(false);
+        setSprintFilter(s.id);
+      },
+      onError: (err) => toast.error(extractErrorMessage(err, 'Could not create sprint')),
+    });
+  };
+
+  const handleDeleteSprint = (sprint: Sprint) => {
+    if (!window.confirm(`Delete sprint "${sprint.name}"? Its tasks go back to the backlog.`)) return;
+    deleteSprint.mutate(sprint.id, {
+      onSuccess: () => {
+        toast.success('Sprint deleted');
+        if (sprintFilter === sprint.id) setSprintFilter(undefined);
+      },
+      onError: (err) => toast.error(extractErrorMessage(err, 'Could not delete sprint')),
+    });
+  };
+
   const projects = projectList ?? [];
   const members = memberList ?? [];
   const existingProjectNames = new Set(projects.map((p) => p.name.toLowerCase()));
@@ -158,6 +197,11 @@ export function TasksPage() {
   const toggleAllRepos = () =>
     setSelectedRepos(allReposSelected ? new Set() : new Set(importableRepos.map((r) => r.name)));
   const tasks = tasksQuery.data?.data ?? [];
+  const filtersActive =
+    Boolean(search || tagFilter || projectFilter) ||
+    statusFilter !== 'all' ||
+    hasActiveFilters(filters) ||
+    sprintFilter !== undefined;
   const total = tasksQuery.data?.total ?? tasks.length;
 
   return (
@@ -204,6 +248,14 @@ export function TasksPage() {
               </div>
             </div>
           )}
+
+          <SprintSidebar
+            sprints={sprintList ?? []}
+            value={sprintFilter}
+            onChange={setSprintFilter}
+            onNew={() => setSprintFormOpen(true)}
+            onDelete={handleDeleteSprint}
+          />
 
           <div>
             <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -352,6 +404,8 @@ export function TasksPage() {
             </div>
           </div>
 
+          <TaskFilterBar value={filters} onChange={setFilters} members={members} />
+
           {tasksQuery.isLoading ? (
             <p className="text-sm text-slate-500">Loading…</p>
           ) : tasksQuery.isError ? (
@@ -359,12 +413,12 @@ export function TasksPage() {
           ) : tasks.length === 0 ? (
             <EmptyState
               title={
-                search || tagFilter || projectFilter || statusFilter !== 'all'
+                filtersActive
                   ? 'No matching tasks'
                   : 'No tasks yet'
               }
               description={
-                search || tagFilter || projectFilter || statusFilter !== 'all'
+                filtersActive
                   ? 'Try clearing your filters.'
                   : 'Create your first task to get started.'
               }
@@ -383,6 +437,14 @@ export function TasksPage() {
           onSubmit={handleCreate}
           onCancel={() => setCreateOpen(false)}
           isSubmitting={createTask.isPending}
+        />
+      </Modal>
+
+      <Modal open={sprintFormOpen} onClose={() => setSprintFormOpen(false)} title="New sprint">
+        <SprintForm
+          onSubmit={handleCreateSprint}
+          onCancel={() => setSprintFormOpen(false)}
+          isSubmitting={createSprint.isPending}
         />
       </Modal>
 
