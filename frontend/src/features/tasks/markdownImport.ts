@@ -10,14 +10,14 @@ export const TASK_TEMPLATE = `### T01 · Kısa ad
 **Title:** Görev başlığı
 **Description:** Ne yapılacak, kabul kriteri ne. Bir sonraki satır da açıklamaya eklenir.
 **Status:** To do · **Priority:** Medium · **Due date:** 31.12.2026
-**Project:** Proje adı · **Assignee:** Unassigned · **Energy:** Medium · **Est. minutes:** 60
+**Project:** Proje adı · **Sprint:** Sprint 1 · **Assignee:** Unassigned · **Energy:** Medium · **Est. minutes:** 60
 **Tags:** etiket1, etiket2
 
 ### T02 · İkinci görev
 **Title:** İkinci görevin başlığı
 **Description:** "-" bırakılan alanlar boş kalır; Status ve Priority yazılmazsa To do / Medium olur.
 **Status:** To do · **Priority:** High · **Due date:** -
-**Project:** - · **Assignee:** ornek@mail.com · **Energy:** - · **Est. minutes:** 30
+**Project:** - · **Sprint:** - · **Assignee:** ornek@mail.com · **Energy:** - · **Est. minutes:** 30
 **Tags:** etiket1
 `;
 
@@ -29,6 +29,7 @@ export interface ParsedTask {
   priority: TaskPriority;
   due_date: string | null;
   projectName: string | null;
+  sprintName: string | null;
   assignee: string | null;
   energy: TaskEnergy | null;
   estimated_minutes: number | null;
@@ -48,6 +49,7 @@ type FieldKey =
   | 'priority'
   | 'due_date'
   | 'project'
+  | 'sprint'
   | 'assignee'
   | 'energy'
   | 'estimated_minutes'
@@ -74,6 +76,8 @@ const KEYS: Record<string, FieldKey> = {
   tarih: 'due_date',
   project: 'project',
   proje: 'project',
+  sprint: 'sprint',
+  'sprint adı': 'sprint',
   assignee: 'assignee',
   atanan: 'assignee',
   sorumlu: 'assignee',
@@ -180,6 +184,7 @@ function newDraft(line: number, heading: string | null): Draft {
     priority: 'medium',
     due_date: null,
     projectName: null,
+    sprintName: null,
     assignee: null,
     energy: null,
     estimated_minutes: null,
@@ -233,6 +238,9 @@ function applyField(draft: Draft, key: FieldKey, value: string, line: number): v
     }
     case 'project':
       draft.projectName = isEmpty(value) ? null : value;
+      break;
+    case 'sprint':
+      draft.sprintName = isEmpty(value) ? null : value;
       break;
     case 'assignee':
       draft.assignee = isEmpty(value) ? null : value;

@@ -9,20 +9,23 @@ from app.api.deps import CurrentUser, SessionDep
 from app.core.crypto import decrypt_secret
 from app.core.rate_limit import limiter
 from app.models.tag import Tag
-from app.models.task import Task, TaskEnergy, TaskStatus
+from app.models.task import Task, TaskEnergy, TaskPriority, TaskStatus
 from app.models.user import User
 from app.repositories import (
     integration_repo,
     project_repo,
+    sprint_repo,
     tag_repo,
     task_repo,
     workspace_repo,
 )
 from app.schemas.task import (
+    SortOrder,
     SuggestResponse,
     TaskCreate,
     TaskListResponse,
     TaskOut,
+    TaskSortField,
     TaskSuggestion,
     TaskUpdate,
 )
@@ -82,6 +85,20 @@ async def _validate_assignee(
         )
 
 
+async def _validate_sprint(
+    session: AsyncSession, sprint_id: UUID | None, workspace_id: UUID
+) -> None:
+    """A task's sprint must belong to the same workspace as the task."""
+    if sprint_id is None:
+        return
+    sprint = await sprint_repo.get(session, sprint_id=sprint_id)
+    if sprint is None or sprint.workspace_id != workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Sprint does not belong to this workspace",
+        )
+
+
 @router.get("", response_model=TaskListResponse)
 async def list_tasks(
     current_user: CurrentUser,
@@ -91,7 +108,18 @@ async def list_tasks(
     tag_id: UUID | None = None,
     project_id: UUID | None = None,
     assignee_id: UUID | None = None,
+    unassigned: bool = False,
+    sprint_id: UUID | None = None,
+    backlog: bool = False,
+    priority: TaskPriority | None = None,
+    energy: TaskEnergy | None = None,
+    due_before: datetime | None = None,
+    due_after: datetime | None = None,
+    has_due_date: bool | None = None,
+    max_minutes: int | None = Query(default=None, ge=1),
     search: str | None = None,
+    sort: TaskSortField = "created_at",
+    order: SortOrder = "desc",
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> TaskListResponse:
@@ -103,7 +131,18 @@ async def list_tasks(
         tag_id=tag_id,
         project_id=project_id,
         assignee_id=assignee_id,
+        unassigned=unassigned,
+        sprint_id=sprint_id,
+        backlog=backlog,
+        priority=priority,
+        energy=energy,
+        due_before=due_before,
+        due_after=due_after,
+        has_due_date=has_due_date,
+        max_minutes=max_minutes,
         search=search,
+        sort=sort,
+        order=order,
         page=page,
         limit=limit,
     )
@@ -125,6 +164,7 @@ async def create_task(
     ws_id = await resolve_workspace(session, current_user, workspace_id, write=True)
     await _validate_project(session, payload.project_id, ws_id)
     await _validate_assignee(session, payload.assignee_id, ws_id)
+    await _validate_sprint(session, payload.sprint_id, ws_id)
     tags = await _resolve_tags(session, tag_ids=payload.tag_ids, user_id=current_user.id)
     task = Task(
         user_id=current_user.id,
@@ -138,6 +178,7 @@ async def create_task(
         energy_level=payload.energy_level,
         project_id=payload.project_id,
         assignee_id=payload.assignee_id,
+        sprint_id=payload.sprint_id,
     )
     created = await task_repo.create_task(session, task=task, tags=tags)
     return TaskOut.model_validate(created)
@@ -190,6 +231,8 @@ async def update_task(
         await _validate_project(session, update_data["project_id"], task.workspace_id)
     if "assignee_id" in update_data:
         await _validate_assignee(session, update_data["assignee_id"], task.workspace_id)
+    if "sprint_id" in update_data:
+        await _validate_sprint(session, update_data["sprint_id"], task.workspace_id)
     for key, value in update_data.items():
         setattr(task, key, value)
 

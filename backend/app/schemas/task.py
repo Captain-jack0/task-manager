@@ -1,10 +1,23 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.task import TaskEnergy, TaskPriority, TaskStatus
 from app.schemas.tag import TagOut
+
+TaskSortField = Literal[
+    "created_at",
+    "updated_at",
+    "due_date",
+    "priority",
+    "energy",
+    "status",
+    "title",
+    "estimated_minutes",
+]
+SortOrder = Literal["asc", "desc"]
 
 
 class TaskBase(BaseModel):
@@ -17,6 +30,7 @@ class TaskBase(BaseModel):
     energy_level: TaskEnergy | None = None
     project_id: UUID | None = None
     assignee_id: UUID | None = None
+    sprint_id: UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -41,6 +55,7 @@ class TaskUpdate(BaseModel):
     energy_level: TaskEnergy | None = None
     project_id: UUID | None = None
     assignee_id: UUID | None = None
+    sprint_id: UUID | None = None
     tag_ids: list[UUID] | None = None
 
 

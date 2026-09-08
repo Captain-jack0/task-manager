@@ -2,6 +2,15 @@ export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done' | 'closed';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEnergy = 'low' | 'medium' | 'high';
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'guest';
+export type TaskSortField =
+  | 'created_at'
+  | 'updated_at'
+  | 'due_date'
+  | 'priority'
+  | 'energy'
+  | 'status'
+  | 'title'
+  | 'estimated_minutes';
 
 export interface User {
   id: string;
@@ -62,6 +71,28 @@ export interface ProjectCreateInput {
   color?: string | null;
 }
 
+export interface Sprint {
+  id: string;
+  workspace_id: string;
+  name: string;
+  goal: string | null;
+  /** YYYY-MM-DD */
+  start_date: string;
+  end_date: string;
+  task_count: number;
+  done_count: number;
+  created_at: string;
+}
+
+export interface SprintCreateInput {
+  name: string;
+  goal?: string | null;
+  start_date: string;
+  end_date: string;
+}
+
+export type SprintUpdateInput = Partial<SprintCreateInput>;
+
 export interface Tag {
   id: string;
   user_id: string;
@@ -83,6 +114,7 @@ export interface Task {
   energy_level: TaskEnergy | null;
   project_id: string | null;
   assignee_id: string | null;
+  sprint_id: string | null;
   snooze_count: number;
   github_issue_url: string | null;
   github_issue_number: number | null;
@@ -134,6 +166,7 @@ export interface TaskCreateInput {
   energy_level?: TaskEnergy | null;
   project_id?: string | null;
   assignee_id?: string | null;
+  sprint_id?: string | null;
   tag_ids?: string[];
 }
 
@@ -169,7 +202,18 @@ export interface TaskListFilters {
   tag_id?: string;
   project_id?: string;
   assignee_id?: string;
+  unassigned?: boolean;
+  sprint_id?: string;
+  backlog?: boolean;
+  priority?: TaskPriority;
+  energy?: TaskEnergy;
+  due_before?: string;
+  due_after?: string;
+  has_due_date?: boolean;
+  max_minutes?: number;
   search?: string;
+  sort?: TaskSortField;
+  order?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 }

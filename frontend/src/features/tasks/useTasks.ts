@@ -71,7 +71,11 @@ export function useCreateTask() {
   return useMutation({
     mutationFn: (input: TaskCreateInput) =>
       tasksApi.create(input, useWorkspaceStore.getState().currentWorkspaceId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TASKS_KEY });
+      // Sprint progress counts live on the sprint list.
+      qc.invalidateQueries({ queryKey: ['sprints'] });
+    },
   });
 }
 
@@ -101,7 +105,10 @@ export function useUpdateTask() {
     onError: (_err, _vars, ctx) => {
       ctx?.snapshot.forEach(([key, data]) => qc.setQueryData(key, data));
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: TASKS_KEY });
+      qc.invalidateQueries({ queryKey: ['sprints'] });
+    },
   });
 }
 
@@ -126,6 +133,9 @@ export function useDeleteTask() {
     onError: (_err, _vars, ctx) => {
       ctx?.snapshot.forEach(([key, data]) => qc.setQueryData(key, data));
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: TASKS_KEY });
+      qc.invalidateQueries({ queryKey: ['sprints'] });
+    },
   });
 }
