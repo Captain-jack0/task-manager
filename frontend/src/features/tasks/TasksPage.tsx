@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
@@ -17,10 +17,12 @@ import { QuickAdd } from './QuickAdd';
 import { StuckTasksNudge } from './StuckTasksNudge';
 import { SuggestPanel } from './SuggestPanel';
 import { TaskBoard } from './TaskBoard';
+import { TaskFilterBar } from './TaskFilterBar';
 import { TaskForm } from './TaskForm';
 import { TaskList } from './TaskList';
 import type { TaskFormValues } from './schemas';
 import { STATUS_LABEL, STATUS_ORDER } from './status';
+import { DEFAULT_TASK_FILTERS, hasActiveFilters, toQuery, type TaskFilterState } from './taskFilters';
 import { useCreateTask, useTasks } from './useTasks';
 
 const STATUS_OPTIONS: { value: TaskStatus | 'all'; label: string }[] = [
@@ -37,6 +39,9 @@ export function TasksPage() {
   const [view, setView] = useState<'list' | 'board'>('list');
   const [importOpen, setImportOpen] = useState(false);
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState<TaskFilterState>(DEFAULT_TASK_FILTERS);
+  // Memoised so the "now"-relative due ranges don't change the query key every render.
+  const fieldQuery = useMemo(() => toQuery(filters), [filters]);
 
   const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? undefined;
 
@@ -58,6 +63,7 @@ export function TasksPage() {
     tag_id: tagFilter,
     project_id: projectFilter,
     search: search || undefined,
+    ...fieldQuery,
     limit: 100,
   });
   const createTask = useCreateTask();
@@ -158,6 +164,10 @@ export function TasksPage() {
   const toggleAllRepos = () =>
     setSelectedRepos(allReposSelected ? new Set() : new Set(importableRepos.map((r) => r.name)));
   const tasks = tasksQuery.data?.data ?? [];
+  const filtersActive =
+    Boolean(search || tagFilter || projectFilter) ||
+    statusFilter !== 'all' ||
+    hasActiveFilters(filters);
   const total = tasksQuery.data?.total ?? tasks.length;
 
   return (
@@ -352,6 +362,8 @@ export function TasksPage() {
             </div>
           </div>
 
+          <TaskFilterBar value={filters} onChange={setFilters} members={members} />
+
           {tasksQuery.isLoading ? (
             <p className="text-sm text-slate-500">Loading…</p>
           ) : tasksQuery.isError ? (
@@ -359,12 +371,12 @@ export function TasksPage() {
           ) : tasks.length === 0 ? (
             <EmptyState
               title={
-                search || tagFilter || projectFilter || statusFilter !== 'all'
+                filtersActive
                   ? 'No matching tasks'
                   : 'No tasks yet'
               }
               description={
-                search || tagFilter || projectFilter || statusFilter !== 'all'
+                filtersActive
                   ? 'Try clearing your filters.'
                   : 'Create your first task to get started.'
               }
