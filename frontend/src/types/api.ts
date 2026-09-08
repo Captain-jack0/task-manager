@@ -2,6 +2,15 @@ export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done' | 'closed';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEnergy = 'low' | 'medium' | 'high';
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'guest';
+export type TaskSortField =
+  | 'created_at'
+  | 'updated_at'
+  | 'due_date'
+  | 'priority'
+  | 'energy'
+  | 'status'
+  | 'title'
+  | 'estimated_minutes';
 
 export interface User {
   id: string;
@@ -169,7 +178,16 @@ export interface TaskListFilters {
   tag_id?: string;
   project_id?: string;
   assignee_id?: string;
+  unassigned?: boolean;
+  priority?: TaskPriority;
+  energy?: TaskEnergy;
+  due_before?: string;
+  due_after?: string;
+  has_due_date?: boolean;
+  max_minutes?: number;
   search?: string;
+  sort?: TaskSortField;
+  order?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 }

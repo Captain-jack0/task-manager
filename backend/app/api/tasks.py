@@ -9,7 +9,7 @@ from app.api.deps import CurrentUser, SessionDep
 from app.core.crypto import decrypt_secret
 from app.core.rate_limit import limiter
 from app.models.tag import Tag
-from app.models.task import Task, TaskEnergy, TaskStatus
+from app.models.task import Task, TaskEnergy, TaskPriority, TaskStatus
 from app.models.user import User
 from app.repositories import (
     integration_repo,
@@ -19,10 +19,12 @@ from app.repositories import (
     workspace_repo,
 )
 from app.schemas.task import (
+    SortOrder,
     SuggestResponse,
     TaskCreate,
     TaskListResponse,
     TaskOut,
+    TaskSortField,
     TaskSuggestion,
     TaskUpdate,
 )
@@ -91,7 +93,16 @@ async def list_tasks(
     tag_id: UUID | None = None,
     project_id: UUID | None = None,
     assignee_id: UUID | None = None,
+    unassigned: bool = False,
+    priority: TaskPriority | None = None,
+    energy: TaskEnergy | None = None,
+    due_before: datetime | None = None,
+    due_after: datetime | None = None,
+    has_due_date: bool | None = None,
+    max_minutes: int | None = Query(default=None, ge=1),
     search: str | None = None,
+    sort: TaskSortField = "created_at",
+    order: SortOrder = "desc",
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> TaskListResponse:
@@ -103,7 +114,16 @@ async def list_tasks(
         tag_id=tag_id,
         project_id=project_id,
         assignee_id=assignee_id,
+        unassigned=unassigned,
+        priority=priority,
+        energy=energy,
+        due_before=due_before,
+        due_after=due_after,
+        has_due_date=has_due_date,
+        max_minutes=max_minutes,
         search=search,
+        sort=sort,
+        order=order,
         page=page,
         limit=limit,
     )
