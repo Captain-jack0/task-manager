@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { extractErrorMessage } from '@/api/client';
-import type { Member, Project, Task, TaskStatus } from '@/types/api';
+import type { Member, Project, Sprint, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
+import { SprintPicker } from '@/features/sprints/SprintPicker';
 import { cn } from '@/lib/cn';
 import { scheduleIso, dateStrToIso } from '@/lib/schedule';
 import { formatDate } from '@/lib/date';
@@ -22,10 +23,12 @@ export function TaskBoard({
   tasks,
   projects,
   members,
+  sprints = [],
 }: {
   tasks: Task[];
   projects: Project[];
   members: Member[];
+  sprints?: Sprint[];
 }) {
   const updateMutation = useUpdateTask();
   const [dragId, setDragId] = useState<string | null>(null);
@@ -39,6 +42,13 @@ export function TaskBoard({
     updateMutation.mutate(
       { id, input: { status } },
       { onError: (err) => toast.error(extractErrorMessage(err, 'Update failed')) },
+    );
+  };
+
+  const moveToSprint = (id: string, sprintId: string | null) => {
+    updateMutation.mutate(
+      { id, input: { sprint_id: sprintId } },
+      { onError: (err) => toast.error(extractErrorMessage(err, 'Could not move task')) },
     );
   };
 
@@ -204,6 +214,20 @@ export function TaskBoard({
                       {task.tags.map((tag) => (
                         <TagBadge key={tag.id} tag={tag} />
                       ))}
+                    </div>
+                  )}
+                  {sprints.length > 0 && (
+                    <div
+                      className="mt-2"
+                      onClick={(e) => e.stopPropagation()}
+                      draggable
+                      onDragStart={(e) => e.preventDefault()}
+                    >
+                      <SprintPicker
+                        sprints={sprints}
+                        value={task.sprint_id}
+                        onChange={(sprintId) => moveToSprint(task.id, sprintId)}
+                      />
                     </div>
                   )}
                 </div>

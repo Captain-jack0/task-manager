@@ -425,9 +425,9 @@ export function TasksPage() {
               action={<Button onClick={() => setCreateOpen(true)}>Create task</Button>}
             />
           ) : view === 'board' ? (
-            <TaskBoard tasks={tasks} projects={projects} members={members} />
+            <TaskBoard tasks={tasks} projects={projects} members={members} sprints={sprintList ?? []} />
           ) : (
-            <TaskList tasks={tasks} projects={projects} members={members} />
+            <TaskList tasks={tasks} projects={projects} members={members} sprints={sprintList ?? []} />
           )}
         </section>
       </div>
