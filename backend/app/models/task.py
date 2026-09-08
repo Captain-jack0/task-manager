@@ -64,6 +64,13 @@ class Task(Base, UUIDMixin, TimestampMixin):
         ForeignKey("projects.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Optional sprint (time-box) within the workspace; NULL = backlog. Deleting
+    # a sprint sends its tasks back to the backlog (SET NULL).
+    sprint_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("sprints.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     # Optional assignee — must be a member of the task's workspace. Unlinked
     # (SET NULL) if that user is removed.
     assignee_id: Mapped[UUID | None] = mapped_column(

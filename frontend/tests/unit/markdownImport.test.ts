@@ -56,7 +56,7 @@ describe('parseTaskMarkdown', () => {
 
   it('accepts Turkish field names and ISO dates, defaults the rest', () => {
     const { tasks } = parseTaskMarkdown(
-      '**Başlık:** Türkçe görev\n**Durum:** Bitti · **Öncelik:** Yüksek · **Bitiş:** 2026-12-31\n**Etiketler:** a; b',
+      '**Başlık:** Türkçe görev\n**Durum:** Bitti · **Öncelik:** Yüksek · **Bitiş:** 2026-12-31 · **Sprint:** S1\n**Etiketler:** a; b',
     );
     expect(tasks).toHaveLength(1);
     const [t] = tasks;
@@ -65,6 +65,7 @@ describe('parseTaskMarkdown', () => {
     expect(t.priority).toBe('high');
     expect(t.due_date).toBe(new Date(2026, 11, 31).toISOString());
     expect(t.energy).toBeNull();
+    expect(t.sprintName).toBe('S1');
     expect(t.tagNames).toEqual(['a', 'b']);
   });
 
@@ -113,5 +114,7 @@ describe('parseTaskMarkdown', () => {
     expect(tasks).toHaveLength(2);
     expect(tasks[1].assignee).toBe('ornek@mail.com');
     expect(tasks[1].projectName).toBeNull();
+    expect(tasks[0].sprintName).toBe('Sprint 1');
+    expect(tasks[1].sprintName).toBeNull();
   });
 });

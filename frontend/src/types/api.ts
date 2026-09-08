@@ -71,6 +71,28 @@ export interface ProjectCreateInput {
   color?: string | null;
 }
 
+export interface Sprint {
+  id: string;
+  workspace_id: string;
+  name: string;
+  goal: string | null;
+  /** YYYY-MM-DD */
+  start_date: string;
+  end_date: string;
+  task_count: number;
+  done_count: number;
+  created_at: string;
+}
+
+export interface SprintCreateInput {
+  name: string;
+  goal?: string | null;
+  start_date: string;
+  end_date: string;
+}
+
+export type SprintUpdateInput = Partial<SprintCreateInput>;
+
 export interface Tag {
   id: string;
   user_id: string;
@@ -92,6 +114,7 @@ export interface Task {
   energy_level: TaskEnergy | null;
   project_id: string | null;
   assignee_id: string | null;
+  sprint_id: string | null;
   snooze_count: number;
   github_issue_url: string | null;
   github_issue_number: number | null;
@@ -143,6 +166,7 @@ export interface TaskCreateInput {
   energy_level?: TaskEnergy | null;
   project_id?: string | null;
   assignee_id?: string | null;
+  sprint_id?: string | null;
   tag_ids?: string[];
 }
 
@@ -179,6 +203,8 @@ export interface TaskListFilters {
   project_id?: string;
   assignee_id?: string;
   unassigned?: boolean;
+  sprint_id?: string;
+  backlog?: boolean;
   priority?: TaskPriority;
   energy?: TaskEnergy;
   due_before?: string;
