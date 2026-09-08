@@ -45,6 +45,8 @@ async def list_tasks(
     project_id: UUID | None = None,
     assignee_id: UUID | None = None,
     unassigned: bool = False,
+    sprint_id: UUID | None = None,
+    backlog: bool = False,
     priority: TaskPriority | None = None,
     energy: TaskEnergy | None = None,
     due_before: datetime | None = None,
@@ -66,6 +68,10 @@ async def list_tasks(
         conditions.append(Task.assignee_id.is_(None))
     elif assignee_id is not None:
         conditions.append(Task.assignee_id == assignee_id)
+    if backlog:
+        conditions.append(Task.sprint_id.is_(None))
+    elif sprint_id is not None:
+        conditions.append(Task.sprint_id == sprint_id)
     if priority is not None:
         conditions.append(Task.priority == priority)
     if energy is not None:

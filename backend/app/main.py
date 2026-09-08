@@ -13,6 +13,7 @@ from app.api import (
     comments,
     integrations,
     projects,
+    sprints,
     tags,
     tasks,
     workspaces,
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(workspaces.router)
     app.include_router(projects.router)
+    app.include_router(sprints.router)
     app.include_router(tasks.router)
     app.include_router(comments.router)
     app.include_router(tags.router)

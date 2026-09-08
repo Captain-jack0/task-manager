@@ -1,6 +1,7 @@
 from app.models.comment import Comment
 from app.models.integration import GithubIntegration
 from app.models.project import Project
+from app.models.sprint import Sprint
 from app.models.tag import Tag
 from app.models.task import Task, TaskEnergy, TaskPriority, TaskStatus
 from app.models.task_tag import task_tags
@@ -11,6 +12,7 @@ __all__ = [
     "Comment",
     "GithubIntegration",
     "Project",
+    "Sprint",
     "Tag",
     "Task",
     "TaskEnergy",
