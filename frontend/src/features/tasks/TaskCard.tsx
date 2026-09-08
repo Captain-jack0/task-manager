@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import type { Task, TaskStatus } from '@/types/api';
+import type { Sprint, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
+import { SprintPicker } from '@/features/sprints/SprintPicker';
 import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
 import { scheduleIso, dateStrToIso } from '@/lib/schedule';
@@ -17,7 +18,9 @@ interface Props {
   projectName?: string;
   projectColor?: string | null;
   assigneeEmail?: string;
+  sprints?: Sprint[];
   onToggleStatus: (next: TaskStatus) => void;
+  onMoveToSprint?: (sprintId: string | null) => void;
   onSnooze: () => void;
   onSchedule: (iso: string) => void;
   onDelete: () => void;
@@ -28,7 +31,9 @@ export function TaskCard({
   projectName,
   projectColor,
   assigneeEmail,
+  sprints = [],
   onToggleStatus,
+  onMoveToSprint,
   onSnooze,
   onSchedule,
   onDelete,
@@ -162,6 +167,9 @@ export function TaskCard({
           Move to {STATUS_LABEL[nextStatus]} →
         </button>
         <div className="flex items-center gap-3">
+          {onMoveToSprint && (
+            <SprintPicker sprints={sprints} value={task.sprint_id} onChange={onMoveToSprint} />
+          )}
           {!done && (
             <button
               type="button"

@@ -1,6 +1,6 @@
 import { toast } from 'sonner';
 import { extractErrorMessage } from '@/api/client';
-import type { Member, Project, Task, TaskStatus } from '@/types/api';
+import type { Member, Project, Sprint, Task, TaskStatus } from '@/types/api';
 import { useDeleteTask, useSnooze, useUpdateTask } from './useTasks';
 import { TaskCard } from './TaskCard';
 
@@ -8,9 +8,10 @@ interface Props {
   tasks: Task[];
   projects: Project[];
   members: Member[];
+  sprints?: Sprint[];
 }
 
-export function TaskList({ tasks, projects, members }: Props) {
+export function TaskList({ tasks, projects, members, sprints = [] }: Props) {
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
   const snoozeMutation = useSnooze();
@@ -41,6 +42,17 @@ export function TaskList({ tasks, projects, members }: Props) {
     );
   };
 
+  const handleSprint = (id: string, sprintId: string | null) => {
+    const name = sprints.find((s) => s.id === sprintId)?.name ?? 'backlog';
+    updateMutation.mutate(
+      { id, input: { sprint_id: sprintId } },
+      {
+        onSuccess: () => toast.success(`Moved to ${name}`),
+        onError: (err) => toast.error(extractErrorMessage(err, 'Could not move task')),
+      },
+    );
+  };
+
   const handleDelete = (id: string) => {
     if (!window.confirm('Delete this task?')) return;
     deleteMutation.mutate(id, {
@@ -60,7 +72,9 @@ export function TaskList({ tasks, projects, members }: Props) {
             projectName={project?.name}
             projectColor={project?.color}
             assigneeEmail={task.assignee_id ? emailById.get(task.assignee_id) : undefined}
+            sprints={sprints}
             onToggleStatus={(next) => handleStatus(task.id, next)}
+            onMoveToSprint={(sprintId) => handleSprint(task.id, sprintId)}
             onSnooze={() => handleSnooze(task.id)}
             onSchedule={(iso) => handleSchedule(task.id, iso)}
             onDelete={() => handleDelete(task.id)}
