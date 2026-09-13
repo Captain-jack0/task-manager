@@ -87,19 +87,20 @@ export function useUpdateTask() {
     onMutate: async ({ id, input }) => {
       await qc.cancelQueries({ queryKey: TASKS_KEY });
       const snapshot = qc.getQueriesData<TaskListResponse>({ queryKey: TASKS_KEY });
-      // Guard on Array.isArray: TASKS_KEY also matches the single-task detail
-      // query (['tasks','detail',id]) whose data is a Task, not a list — without
-      // this, data.data.map throws in onMutate and the request is never sent.
-      qc.setQueriesData<TaskListResponse>({ queryKey: TASKS_KEY }, (data) =>
-        data && Array.isArray(data.data)
-          ? {
-              ...data,
-              data: data.data.map((t) =>
-                t.id === id ? { ...t, ...input, tags: t.tags } : t,
-              ) as Task[],
-            }
-          : data,
-      );
+      // TASKS_KEY matches both list queries (data: Task[]) and the single-task
+      // detail query (a Task). Patch both optimistically so a follow-up edit
+      // (e.g. ticking two checklist boxes quickly) builds on the latest text.
+      qc.setQueriesData<TaskListResponse | Task>({ queryKey: TASKS_KEY }, (data) => {
+        if (!data) return data;
+        if ('data' in data && Array.isArray(data.data)) {
+          return {
+            ...data,
+            data: data.data.map((t) => (t.id === id ? { ...t, ...input, tags: t.tags } : t)) as Task[],
+          };
+        }
+        if ('id' in data && data.id === id) return { ...data, ...input, tags: data.tags } as Task;
+        return data;
+      });
       return { snapshot };
     },
     onError: (_err, _vars, ctx) => {

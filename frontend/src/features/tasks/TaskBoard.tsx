@@ -6,12 +6,22 @@ import type { Member, Project, Sprint, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { SprintPicker } from '@/features/sprints/SprintPicker';
 import { cn } from '@/lib/cn';
+import { checklistLabel } from '@/lib/markdown';
 import { scheduleIso, dateStrToIso } from '@/lib/schedule';
 import { formatDate } from '@/lib/date';
 import { useUpdateTask } from './useTasks';
 import { STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 
 const COLUMNS = STATUS_ORDER.map((status) => ({ status, label: STATUS_LABEL[status] }));
+
+const boardMeta = (task: Task): string =>
+  [
+    task.estimated_minutes != null && `~${task.estimated_minutes}m`,
+    task.energy_level && `${task.energy_level} energy`,
+    checklistLabel(task.description),
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
 const PRIORITY_DOT: Record<Task['priority'], string> = {
   low: 'bg-slate-400',
@@ -148,12 +158,8 @@ export function TaskBoard({
                       title={`${task.priority} priority`}
                     />
                   </div>
-                  {(task.estimated_minutes != null || task.energy_level) && (
-                    <p className="mt-1.5 text-xs text-slate-400">
-                      {task.estimated_minutes != null && `~${task.estimated_minutes}m`}
-                      {task.estimated_minutes != null && task.energy_level && ' · '}
-                      {task.energy_level && `${task.energy_level} energy`}
-                    </p>
+                  {boardMeta(task) && (
+                    <p className="mt-1.5 text-xs text-slate-400">{boardMeta(task)}</p>
                   )}
                   {!isCompleted(task.status) && (
                     <div

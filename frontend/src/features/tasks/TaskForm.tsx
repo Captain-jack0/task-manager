@@ -2,6 +2,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
 import type { Task, TaskPriority } from '@/types/api';
 import { TagPicker } from '@/features/tags/TagPicker';
 import { useProjects } from '@/features/projects/useProjects';
@@ -61,11 +62,19 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
         <label htmlFor="description" className="text-sm font-medium text-slate-600 dark:text-slate-300">
           Description
         </label>
-        <textarea
-          id="description"
-          rows={3}
-          {...register('description')}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <MarkdownEditor
+              id="description"
+              value={field.value ?? ''}
+              onChange={field.onChange}
+              rows={4}
+              placeholder="What needs to happen? Markdown works: lists, checklists, tables…"
+              error={errors.description?.message}
+            />
+          )}
         />
       </div>
 
