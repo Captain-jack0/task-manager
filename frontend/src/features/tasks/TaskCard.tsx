@@ -4,6 +4,7 @@ import { TagBadge } from '@/features/tags/TagBadge';
 import { SprintPicker } from '@/features/sprints/SprintPicker';
 import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
+import { checklistLabel, stripMarkdown } from '@/lib/markdown';
 import { scheduleIso, dateStrToIso } from '@/lib/schedule';
 import { NEXT_STATUS, STATUS_LABEL, isCompleted } from './status';
 
@@ -41,6 +42,7 @@ export function TaskCard({
   const done = isCompleted(task.status);
   const overdue = !done && isOverdue(task.due_date);
   const nextStatus = NEXT_STATUS[task.status];
+  const checklist = checklistLabel(task.description);
 
   return (
     <div
@@ -70,8 +72,8 @@ export function TaskCard({
       </div>
 
       {task.description && (
-        <p className="mt-2 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
-          {task.description}
+        <p className="mt-2 line-clamp-2 whitespace-pre-line text-sm text-slate-500 dark:text-slate-400">
+          {stripMarkdown(task.description)}
         </p>
       )}
 
@@ -116,9 +118,10 @@ export function TaskCard({
           </div>
         )}
 
-      {(task.estimated_minutes != null || task.energy_level || task.snooze_count > 0) && (
+      {(task.estimated_minutes != null || task.energy_level || task.snooze_count > 0 || checklist) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
           {task.estimated_minutes != null && <span>~{task.estimated_minutes}m</span>}
+          {checklist && <span title="Checklist progress">{checklist}</span>}
           {task.energy_level && <span className="capitalize">{task.energy_level} energy</span>}
           {task.snooze_count > 0 && (
             <span

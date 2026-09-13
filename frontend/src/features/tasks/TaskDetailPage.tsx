@@ -10,6 +10,8 @@ import type { TaskStatus } from '@/types/api';
 import { useGithubStatus } from '@/features/integrations/useGithub';
 import { useProjects } from '@/features/projects/useProjects';
 import { useSprints } from '@/features/sprints/useSprints';
+import { MarkdownView } from '@/components/MarkdownView';
+import { toggleNthCheckbox } from '@/lib/markdown';
 import { useMembers } from '@/features/workspaces/useMembers';
 import { CommentsSection } from './CommentsSection';
 import { TaskForm } from './TaskForm';
@@ -208,9 +210,16 @@ export function TaskDetailPage() {
           </div>
 
           {task.description ? (
-            <p className="mt-5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-              {task.description}
-            </p>
+            <MarkdownView
+              className="mt-5"
+              text={task.description}
+              onToggleCheckbox={(n, checked) =>
+                updateMutation.mutate(
+                  { id: task.id, input: { description: toggleNthCheckbox(task.description ?? '', n, checked) } },
+                  { onError: (err) => toast.error(extractErrorMessage(err, 'Could not update checklist')) },
+                )
+              }
+            />
           ) : (
             <p className="mt-5 text-sm italic text-slate-400">No description.</p>
           )}
