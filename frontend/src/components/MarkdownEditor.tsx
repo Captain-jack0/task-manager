@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { cn } from '@/lib/cn';
 import {
+  continueList,
   insertBlock,
   prefixLines,
   TABLE_TEMPLATE,
@@ -50,7 +51,26 @@ export function MarkdownEditor({ id, value, onChange, placeholder, rows = 5, err
     });
   };
 
+  const applyResult = (result: EditResult) => {
+    const ta = ref.current;
+    onChange(result.text);
+    requestAnimationFrame(() => {
+      ta?.focus();
+      ta?.setSelectionRange(result.start, result.end);
+    });
+  };
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget;
+    // Enter inside a list keeps the list going (1. → 2., - → -, - [ ] → - [ ]).
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && ta.selectionStart === ta.selectionEnd) {
+      const result = continueList(value, ta.selectionStart);
+      if (result) {
+        e.preventDefault();
+        applyResult(result);
+      }
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey)) return;
     const key = e.key.toLowerCase();
     const tool = key === 'b' ? TOOLS[0] : key === 'i' ? TOOLS[1] : undefined;
