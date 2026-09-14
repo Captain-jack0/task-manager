@@ -19,6 +19,7 @@ const boardMeta = (task: Task): string =>
     task.estimated_minutes != null && `~${task.estimated_minutes}m`,
     task.energy_level && `${task.energy_level} energy`,
     checklistLabel(task.description),
+    !isCompleted(task.status) && task.blocked_by.length > 0 && `⛔ blocked by ${task.blocked_by.length}`,
   ]
     .filter(Boolean)
     .join(' · ');
