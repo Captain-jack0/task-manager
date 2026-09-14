@@ -59,6 +59,21 @@ class TaskUpdate(BaseModel):
     tag_ids: list[UUID] | None = None
 
 
+class TaskRef(BaseModel):
+    """The other end of a task link, enough to render a chip."""
+
+    link_id: UUID
+    id: UUID
+    title: str
+    status: TaskStatus
+
+
+class TaskLinkCreate(BaseModel):
+    target_id: UUID
+    # `blocked_by` is sugar: stored as target → this task with kind=blocks.
+    kind: Literal["blocks", "blocked_by", "relates"]
+
+
 class TaskOut(TaskBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,6 +84,9 @@ class TaskOut(TaskBase):
     github_issue_url: str | None = None
     github_issue_number: int | None = None
     tags: list[TagOut] = Field(default_factory=list)
+    blocked_by: list[TaskRef] = Field(default_factory=list)
+    blocks: list[TaskRef] = Field(default_factory=list)
+    related: list[TaskRef] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

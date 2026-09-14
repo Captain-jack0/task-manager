@@ -5,6 +5,7 @@ import type {
   SuggestParams,
   Task,
   TaskCreateInput,
+  TaskLinkInput,
   TaskListFilters,
   TaskListResponse,
   TaskUpdateInput,
@@ -42,6 +43,23 @@ export function useSyncGithubIssue() {
   });
 }
 
+export function useAddTaskLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: TaskLinkInput }) => tasksApi.addLink(id, input),
+    // Linking can change the other task's status too, so refresh every task query.
+    onSuccess: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
+
+export function useRemoveTaskLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, linkId }: { id: string; linkId: string }) => tasksApi.removeLink(id, linkId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
+
 export function useResetSnooze() {
   const qc = useQueryClient();
   return useMutation({
@@ -50,10 +68,11 @@ export function useResetSnooze() {
   });
 }
 
-export function useTasks(filters: TaskListFilters = {}) {
+export function useTasks(filters: TaskListFilters = {}, enabled = true) {
   return useQuery({
     queryKey: [...TASKS_KEY, filters],
     queryFn: () => tasksApi.list(filters),
+    enabled,
     placeholderData: (prev) => prev,
   });
 }
