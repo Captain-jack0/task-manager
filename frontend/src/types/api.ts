@@ -79,9 +79,17 @@ export interface Sprint {
   /** YYYY-MM-DD */
   start_date: string;
   end_date: string;
+  /** ISO datetime once the sprint was completed; null while open. */
+  closed_at: string | null;
   task_count: number;
   done_count: number;
   created_at: string;
+}
+
+export interface SprintCloseResult {
+  sprint: Sprint;
+  moved: number;
+  kept: number;
 }
 
 export interface SprintCreateInput {

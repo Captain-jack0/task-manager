@@ -8,7 +8,13 @@ from app.api.deps import CurrentUser, SessionDep
 from app.models.sprint import Sprint
 from app.models.user import User
 from app.repositories import sprint_repo, workspace_repo
-from app.schemas.sprint import SprintCreate, SprintOut, SprintUpdate
+from app.schemas.sprint import (
+    SprintClose,
+    SprintCloseResult,
+    SprintCreate,
+    SprintOut,
+    SprintUpdate,
+)
 
 router = APIRouter(prefix="/sprints", tags=["sprints"])
 
@@ -80,9 +86,38 @@ async def update_sprint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="end_date must be on or after start_date",
         )
-    updated = await sprint_repo.update(session, sprint=sprint)
+    updated = await sprint_repo.update_sprint(session, sprint=sprint)
     counts = await sprint_repo.task_counts(session, workspace_id=updated.workspace_id)
     return _out(updated, counts)
+
+
+@router.post("/{sprint_id}/close", response_model=SprintCloseResult)
+async def close_sprint(
+    sprint_id: UUID,
+    payload: SprintClose,
+    current_user: CurrentUser,
+    session: SessionDep,
+) -> SprintCloseResult:
+    """Complete the sprint: unfinished tasks move to `move_to` (another open
+    sprint) or the backlog; closed tasks stay here as history."""
+    sprint = await _require_sprint(session, current_user, sprint_id, write=True)
+    if sprint.closed_at is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Sprint is already closed")
+    if payload.move_to is not None:
+        target = await sprint_repo.get(session, sprint_id=payload.move_to)
+        if (
+            target is None
+            or target.workspace_id != sprint.workspace_id
+            or target.id == sprint.id
+            or target.closed_at is not None
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="move_to must be another open sprint in this workspace",
+            )
+    moved, kept = await sprint_repo.close(session, sprint=sprint, move_to=payload.move_to)
+    counts = await sprint_repo.task_counts(session, workspace_id=sprint.workspace_id)
+    return SprintCloseResult(sprint=_out(sprint, counts), moved=moved, kept=kept)
 
 
 @router.delete("/{sprint_id}", status_code=status.HTTP_204_NO_CONTENT)
