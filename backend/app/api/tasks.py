@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -10,12 +11,14 @@ from app.core.crypto import decrypt_secret
 from app.core.rate_limit import limiter
 from app.models.tag import Tag
 from app.models.task import Task, TaskEnergy, TaskPriority, TaskStatus
+from app.models.task_link import LinkKind, TaskLink
 from app.models.user import User
 from app.repositories import (
     integration_repo,
     project_repo,
     sprint_repo,
     tag_repo,
+    task_link_repo,
     task_repo,
     workspace_repo,
 )
@@ -23,8 +26,10 @@ from app.schemas.task import (
     SortOrder,
     SuggestResponse,
     TaskCreate,
+    TaskLinkCreate,
     TaskListResponse,
     TaskOut,
+    TaskRef,
     TaskSortField,
     TaskSuggestion,
     TaskUpdate,
@@ -99,6 +104,21 @@ async def _validate_sprint(
         )
 
 
+async def _out_many(session: AsyncSession, tasks: Sequence[Task]) -> list[TaskOut]:
+    """TaskOut with blocked_by / blocks / related attached — one extra query for all rows."""
+    links = await task_link_repo.summaries(session, task_ids=[t.id for t in tasks])
+    return [
+        TaskOut.model_validate(t).model_copy(
+            update={k: [TaskRef.model_validate(r) for r in v] for k, v in links.get(t.id, {}).items()}
+        )
+        for t in tasks
+    ]
+
+
+async def _out(session: AsyncSession, task: Task) -> TaskOut:
+    return (await _out_many(session, [task]))[0]
+
+
 @router.get("", response_model=TaskListResponse)
 async def list_tasks(
     current_user: CurrentUser,
@@ -147,7 +167,7 @@ async def list_tasks(
         limit=limit,
     )
     return TaskListResponse(
-        data=[TaskOut.model_validate(t) for t in rows],
+        data=await _out_many(session, rows),
         total=total,
         page=page,
         limit=limit,
@@ -181,7 +201,7 @@ async def create_task(
         sprint_id=payload.sprint_id,
     )
     created = await task_repo.create_task(session, task=task, tags=tags)
-    return TaskOut.model_validate(created)
+    return await _out(session, created)
 
 
 @router.get("/suggest", response_model=SuggestResponse)
@@ -214,7 +234,7 @@ async def get_task(
     task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> TaskOut:
     task = await _require_task(session, current_user, task_id)
-    return TaskOut.model_validate(task)
+    return await _out(session, task)
 
 
 @router.patch("/{task_id}", response_model=TaskOut)
@@ -233,8 +253,11 @@ async def update_task(
         await _validate_assignee(session, update_data["assignee_id"], task.workspace_id)
     if "sprint_id" in update_data:
         await _validate_sprint(session, update_data["sprint_id"], task.workspace_id)
+    old_status = task.status
     for key, value in update_data.items():
         setattr(task, key, value)
+    if task.status != old_status:
+        await task_link_repo.propagate_blocker_status(session, task)
 
     tags = None
     if payload.tag_ids is not None:
@@ -243,7 +266,7 @@ async def update_task(
         )
 
     updated = await task_repo.update_task(session, task=task, tags=tags)
-    return TaskOut.model_validate(updated)
+    return await _out(session, updated)
 
 
 @router.post("/{task_id}/snooze", response_model=TaskOut)
@@ -261,7 +284,7 @@ async def snooze_task(
     task.snooze_count = (task.snooze_count or 0) + 1
 
     updated = await task_repo.update_task(session, task=task, tags=None)
-    return TaskOut.model_validate(updated)
+    return await _out(session, updated)
 
 
 @router.post("/{task_id}/reset-snooze", response_model=TaskOut)
@@ -273,7 +296,7 @@ async def reset_snooze(
     task = await _require_task(session, current_user, task_id, write=True)
     task.snooze_count = 0
     updated = await task_repo.update_task(session, task=task, tags=None)
-    return TaskOut.model_validate(updated)
+    return await _out(session, updated)
 
 
 @router.post("/{task_id}/github-issue", response_model=TaskOut)
@@ -284,7 +307,7 @@ async def create_github_issue(
     """Open the task as a GitHub issue in the user's connected repo."""
     task = await _require_task(session, current_user, task_id, write=True)
     if task.github_issue_url:
-        return TaskOut.model_validate(task)  # already linked — idempotent
+        return await _out(session, task)  # already linked — idempotent
 
     integration = await integration_repo.get_github(session, user_id=current_user.id)
     if integration is None:
@@ -302,7 +325,7 @@ async def create_github_issue(
     task.github_issue_url = result["html_url"]
     task.github_issue_number = result["number"]
     updated = await task_repo.update_task(session, task=task, tags=None)
-    return TaskOut.model_validate(updated)
+    return await _out(session, updated)
 
 
 @router.post("/{task_id}/github-sync", response_model=TaskOut)
@@ -328,8 +351,9 @@ async def sync_github_issue(
     )
     if state == "closed" and task.status not in (TaskStatus.DONE, TaskStatus.CLOSED):
         task.status = TaskStatus.DONE
+        await task_link_repo.propagate_blocker_status(session, task)
         task = await task_repo.update_task(session, task=task, tags=None)
-    return TaskOut.model_validate(task)
+    return await _out(session, task)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -337,4 +361,68 @@ async def delete_task(
     task_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> None:
     task = await _require_task(session, current_user, task_id, write=True)
+    # Tasks this one was blocking may become free once it is gone.
+    dependents = await task_link_repo.dependents(session, blocker_id=task.id)
     await task_repo.delete_task(session, task=task)
+    for dependent in dependents:
+        await task_link_repo.release_if_unblocked(session, dependent)
+    await session.commit()
+
+
+@router.post("/{task_id}/links", response_model=TaskOut)
+async def add_link(
+    task_id: UUID,
+    payload: TaskLinkCreate,
+    current_user: CurrentUser,
+    session: SessionDep,
+) -> TaskOut:
+    """Link two tasks. A `blocks` link puts the blocked task into `blocked`
+    straight away (unless the blocker is already finished)."""
+    task = await _require_task(session, current_user, task_id, write=True)
+    other = await _require_task(session, current_user, payload.target_id)
+    if other.id == task.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A task cannot link to itself")
+    if other.workspace_id != task.workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Tasks must be in the same workspace"
+        )
+
+    kind = LinkKind.RELATES if payload.kind == "relates" else LinkKind.BLOCKS
+    source, target = (other, task) if payload.kind == "blocked_by" else (task, other)
+    if await task_link_repo.find(session, source_id=source.id, target_id=target.id, kind=kind):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already linked")
+    if kind == LinkKind.BLOCKS and await task_link_repo.find(
+        session, source_id=target.id, target_id=source.id, kind=kind
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="These tasks already block each other the other way"
+        )
+
+    session.add(TaskLink(source_id=source.id, target_id=target.id, kind=kind))
+    if (
+        kind == LinkKind.BLOCKS
+        and source.status not in task_link_repo.FINISHED
+        and target.status in task_link_repo.OPEN
+    ):
+        target.status = TaskStatus.BLOCKED
+    await session.commit()
+    await session.refresh(task)
+    return await _out(session, task)
+
+
+@router.delete("/{task_id}/links/{link_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_link(
+    task_id: UUID, link_id: UUID, current_user: CurrentUser, session: SessionDep
+) -> None:
+    task = await _require_task(session, current_user, task_id, write=True)
+    link = await task_link_repo.get(session, link_id=link_id)
+    if link is None or task.id not in (link.source_id, link.target_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
+    target_id, kind = link.target_id, link.kind
+    await session.delete(link)
+    await session.flush()
+    if kind == LinkKind.BLOCKS:
+        target = await task_repo.get_task(session, task_id=target_id)
+        if target is not None:
+            await task_link_repo.release_if_unblocked(session, target)
+    await session.commit()

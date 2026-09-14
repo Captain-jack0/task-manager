@@ -118,10 +118,22 @@ export function TaskCard({
           </div>
         )}
 
-      {(task.estimated_minutes != null || task.energy_level || task.snooze_count > 0 || checklist) && (
+      {(task.estimated_minutes != null ||
+        task.energy_level ||
+        task.snooze_count > 0 ||
+        checklist ||
+        task.blocked_by.length > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
           {task.estimated_minutes != null && <span>~{task.estimated_minutes}m</span>}
           {checklist && <span title="Checklist progress">{checklist}</span>}
+          {!done && task.blocked_by.length > 0 && (
+            <span
+              title={`Blocked by: ${task.blocked_by.map((t) => t.title).join(', ')}`}
+              className="font-medium text-red-600 dark:text-red-400"
+            >
+              ⛔ blocked by {task.blocked_by.length}
+            </span>
+          )}
           {task.energy_level && <span className="capitalize">{task.energy_level} energy</span>}
           {task.snooze_count > 0 && (
             <span
