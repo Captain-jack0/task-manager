@@ -71,3 +71,56 @@ async def test_task_cannot_join_sprint_of_another_workspace(
         f"/sprints/{bobs_sprint['id']}", json={"name": "Mine now"}, headers=auth_headers
     )
     assert unknown.status_code == 404
+
+
+async def test_close_sprint_carries_over_unfinished_and_keeps_closed(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    s1 = (await client.post("/sprints", json=SPRINT, headers=auth_headers)).json()["id"]
+    s2 = (
+        await client.post(
+            "/sprints",
+            json={"name": "Sprint 2", "start_date": "2026-09-21", "end_date": "2026-10-04"},
+            headers=auth_headers,
+        )
+    ).json()["id"]
+
+    async def make(title: str, status: str) -> str:
+        r = await client.post(
+            "/tasks", json={"title": title, "status": status, "sprint_id": s1}, headers=auth_headers
+        )
+        assert r.status_code == 201, r.text
+        return r.json()["id"]
+
+    todo = await make("todo", "todo")
+    doing = await make("doing", "in_progress")
+    testing = await make("in test", "done")
+    finished = await make("finished", "closed")
+
+    closed = await client.post(f"/sprints/{s1}/close", json={"move_to": s2}, headers=auth_headers)
+    assert closed.status_code == 200, closed.text
+    body = closed.json()
+    assert (body["moved"], body["kept"]) == (3, 1)
+    assert body["sprint"]["closed_at"] is not None
+
+    for tid in (todo, doing, testing):
+        assert (await client.get(f"/tasks/{tid}", headers=auth_headers)).json()["sprint_id"] == s2
+    assert (await client.get(f"/tasks/{finished}", headers=auth_headers)).json()["sprint_id"] == s1
+
+    # Closed sprints are history: no new tasks, no second close, not a carry-over target.
+    again = await client.post(f"/sprints/{s1}/close", json={}, headers=auth_headers)
+    assert again.status_code == 409
+    join = await client.post("/tasks", json={"title": "late", "sprint_id": s1}, headers=auth_headers)
+    assert join.status_code == 400
+    into_closed = await client.post(f"/sprints/{s2}/close", json={"move_to": s1}, headers=auth_headers)
+    assert into_closed.status_code == 400
+    # Editing a task that still sits in the closed sprint (same sprint_id) is allowed.
+    edit_kept = await client.patch(
+        f"/tasks/{finished}", json={"title": "finished!", "sprint_id": s1}, headers=auth_headers
+    )
+    assert edit_kept.status_code == 200
+
+    # Closing with no target sends unfinished tasks to the backlog.
+    to_backlog = await client.post(f"/sprints/{s2}/close", json={}, headers=auth_headers)
+    assert to_backlog.status_code == 200 and to_backlog.json()["moved"] == 3
+    assert (await client.get(f"/tasks/{todo}", headers=auth_headers)).json()["sprint_id"] is None

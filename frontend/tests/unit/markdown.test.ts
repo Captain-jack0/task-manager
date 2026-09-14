@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   checkboxLines,
   checklistProgress,
+  continueList,
   insertBlock,
   prefixLines,
   stripMarkdown,
@@ -40,6 +41,33 @@ describe('editor toolbar helpers', () => {
     const r = insertBlock('intro', { start: 5, end: 5 }, TABLE_TEMPLATE);
     expect(r.text).toBe(`intro\n\n${TABLE_TEMPLATE}`);
     expect(r.text.slice(r.start, r.end)).toBe(TABLE_TEMPLATE);
+  });
+});
+
+describe('continueList (Enter inside a list)', () => {
+  it('counts numbered lists up and keeps the caret on the new line', () => {
+    const text = '1. first';
+    const r = continueList(text, text.length);
+    expect(r?.text).toBe('1. first\n2. ');
+    expect(r?.start).toBe(r?.text.length);
+  });
+
+  it('continues bullets and checklists with a fresh empty box, keeping indentation', () => {
+    expect(continueList('- a', 3)?.text).toBe('- a\n- ');
+    expect(continueList('  - [x] done', 12)?.text).toBe('  - [x] done\n  - [ ] ');
+    expect(continueList('3) c', 4)?.text).toBe('3) c\n4) ');
+  });
+
+  it('ends the list when Enter is pressed on an empty item', () => {
+    const text = '1. a\n2. ';
+    const r = continueList(text, text.length);
+    expect(r?.text).toBe('1. a\n');
+    expect(r?.start).toBe(5);
+  });
+
+  it('does nothing outside a list', () => {
+    expect(continueList('plain text', 10)).toBeNull();
+    expect(continueList('1.no space', 10)).toBeNull();
   });
 });
 

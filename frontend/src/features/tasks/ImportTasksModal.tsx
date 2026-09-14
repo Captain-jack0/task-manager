@@ -54,7 +54,8 @@ export function ImportTasksModal({ open, onClose }: Props) {
   const memberEmails = new Set((members ?? []).map((m) => norm(m.email)));
   const projectNames = new Set((projects ?? []).map((p) => norm(p.name)));
   const tagNames = new Set((tags ?? []).map((t) => norm(t.name)));
-  const sprintNames = new Set((sprints ?? []).map((s) => norm(s.name)));
+  const openSprints = (sprints ?? []).filter((s) => s.closed_at === null);
+  const sprintNames = new Set(openSprints.map((s) => norm(s.name)));
   const unique = (values: (string | null)[]) =>
     [...new Set(values.filter((v): v is string => Boolean(v)))];
   const unknownAssignees = unique(
@@ -84,7 +85,7 @@ export function ImportTasksModal({ open, onClose }: Props) {
     const projectIds = new Map((projects ?? []).map((p) => [norm(p.name), p.id]));
     const tagIds = new Map((tags ?? []).map((t) => [norm(t.name), t.id]));
     const memberIds = new Map((members ?? []).map((m) => [norm(m.email), m.user_id]));
-    const sprintIds = new Map((sprints ?? []).map((s) => [norm(s.name), s.id]));
+    const sprintIds = new Map(openSprints.map((s) => [norm(s.name), s.id]));
     const failed: string[] = [];
 
     for (const [i, task] of tasks.entries()) {

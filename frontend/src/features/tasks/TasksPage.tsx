@@ -9,6 +9,7 @@ import type { Sprint, SprintCreateInput, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { useTags, useDeleteTag } from '@/features/tags/useTags';
 import { useCreateProject, useDeleteProject, useProjects } from '@/features/projects/useProjects';
+import { CompleteSprintModal } from '@/features/sprints/CompleteSprintModal';
 import { SprintForm } from '@/features/sprints/SprintForm';
 import { SprintSidebar, type SprintFilter } from '@/features/sprints/SprintSidebar';
 import { useCreateSprint, useDeleteSprint, useSprints } from '@/features/sprints/useSprints';
@@ -45,6 +46,7 @@ export function TasksPage() {
   const [filters, setFilters] = useState<TaskFilterState>(DEFAULT_TASK_FILTERS);
   const [sprintFilter, setSprintFilter] = useState<SprintFilter>(undefined);
   const [sprintFormOpen, setSprintFormOpen] = useState(false);
+  const [completingSprint, setCompletingSprint] = useState<Sprint | null>(null);
   // Memoised so the "now"-relative due ranges don't change the query key every render.
   const fieldQuery = useMemo(() => toQuery(filters), [filters]);
 
@@ -254,6 +256,7 @@ export function TasksPage() {
             value={sprintFilter}
             onChange={setSprintFilter}
             onNew={() => setSprintFormOpen(true)}
+            onComplete={setCompletingSprint}
             onDelete={handleDeleteSprint}
           />
 
@@ -439,6 +442,12 @@ export function TasksPage() {
           isSubmitting={createTask.isPending}
         />
       </Modal>
+
+      <CompleteSprintModal
+        sprint={completingSprint}
+        sprints={sprintList ?? []}
+        onClose={() => setCompletingSprint(null)}
+      />
 
       <Modal open={sprintFormOpen} onClose={() => setSprintFormOpen(false)} title="New sprint">
         <SprintForm

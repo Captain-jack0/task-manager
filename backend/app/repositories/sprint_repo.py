@@ -1,8 +1,8 @@
 from collections.abc import Sequence
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import UUID
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sprint import Sprint
@@ -45,7 +45,7 @@ async def create(
     return sprint
 
 
-async def update(session: AsyncSession, *, sprint: Sprint) -> Sprint:
+async def update_sprint(session: AsyncSession, *, sprint: Sprint) -> Sprint:
     await session.commit()
     await session.refresh(sprint)
     return sprint
@@ -54,6 +54,20 @@ async def update(session: AsyncSession, *, sprint: Sprint) -> Sprint:
 async def delete(session: AsyncSession, *, sprint: Sprint) -> None:
     await session.delete(sprint)
     await session.commit()
+
+
+async def close(session: AsyncSession, *, sprint: Sprint, move_to: UUID | None) -> tuple[int, int]:
+    """Complete a sprint: every task that is not `closed` is carried over to
+    `move_to` (or the backlog); closed tasks stay behind as history.
+    Returns (moved, kept)."""
+    unfinished = (Task.sprint_id == sprint.id) & (Task.status != TaskStatus.CLOSED)
+    moved = await session.scalar(select(func.count(Task.id)).where(unfinished))
+    await session.execute(update(Task).where(unfinished).values(sprint_id=move_to))
+    kept = await session.scalar(select(func.count(Task.id)).where(Task.sprint_id == sprint.id))
+    sprint.closed_at = datetime.now(UTC)
+    await session.commit()
+    await session.refresh(sprint)
+    return int(moved or 0), int(kept or 0)
 
 
 async def task_counts(session: AsyncSession, *, workspace_id: UUID) -> dict[UUID, tuple[int, int]]:
