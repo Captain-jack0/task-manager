@@ -68,6 +68,34 @@ export function insertBlock(text: string, { start, end }: Selection, block: stri
   };
 }
 
+const LIST_LINE_RE = /^([ \t]*)(- \[[ xX]\] |[-*+] |(\d+)([.)]) )(.*)$/;
+
+/**
+ * Enter inside a list item: continue the list on the next line (numbered
+ * lists count up, checklists get an empty box). Enter on an *empty* item ends
+ * the list by clearing the marker. Returns null when the caret isn't in a list.
+ */
+export function continueList(text: string, caret: number): EditResult | null {
+  const lineStart = text.lastIndexOf('\n', caret - 1) + 1;
+  const line = text.slice(lineStart, caret);
+  const m = LIST_LINE_RE.exec(line);
+  if (!m) return null;
+  const [, indent, marker, number, delimiter, content] = m;
+  if (!content.trim()) {
+    // Empty item → leave the list.
+    const before = text.slice(0, lineStart) + indent;
+    return { text: before + text.slice(caret), start: before.length, end: before.length };
+  }
+  const next = number
+    ? `${Number(number) + 1}${delimiter} `
+    : marker.startsWith('- [')
+      ? '- [ ] '
+      : marker;
+  const inserted = `\n${indent}${next}`;
+  const pos = caret + inserted.length;
+  return { text: text.slice(0, caret) + inserted + text.slice(caret), start: pos, end: pos };
+}
+
 export const TABLE_TEMPLATE = `| Column 1 | Column 2 |
 | --- | --- |
 | Cell | Cell |`;

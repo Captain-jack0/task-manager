@@ -32,6 +32,13 @@ class SprintUpdate(BaseModel):
     end_date: date | None = None
 
 
+class SprintClose(BaseModel):
+    """Where unfinished tasks go when the sprint is completed: another open
+    sprint, or the backlog when null."""
+
+    move_to: UUID | None = None
+
+
 class SprintOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -41,7 +48,15 @@ class SprintOut(BaseModel):
     goal: str | None = None
     start_date: date
     end_date: date
+    closed_at: datetime | None = None
     # Progress, filled in by the list endpoint.
     task_count: int = 0
     done_count: int = 0
     created_at: datetime
+
+
+class SprintCloseResult(BaseModel):
+    sprint: SprintOut
+    # Unfinished tasks carried over / closed tasks kept as history.
+    moved: int
+    kept: int

@@ -135,11 +135,14 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
           className="cursor-pointer rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
         >
           <option value="">Backlog (no sprint)</option>
-          {(sprints ?? []).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} · {s.start_date} → {s.end_date}
-            </option>
-          ))}
+          {(sprints ?? [])
+            .filter((s) => s.closed_at === null || s.id === initial?.sprint_id)
+            .map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} · {s.start_date} → {s.end_date}
+                {s.closed_at ? ' (closed)' : ''}
+              </option>
+            ))}
         </select>
       </div>
 
