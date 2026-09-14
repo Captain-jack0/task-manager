@@ -31,6 +31,18 @@ export function useUpdateSprint() {
   });
 }
 
+/** Completing a sprint moves tasks around, so both sprint and task queries refresh. */
+export function useCloseSprint() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, moveTo }: { id: string; moveTo: string | null }) => sprintsApi.close(id, moveTo),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: SPRINTS_KEY });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+}
+
 export function useDeleteSprint() {
   const qc = useQueryClient();
   return useMutation({
@@ -42,9 +54,16 @@ export function useDeleteSprint() {
   });
 }
 
-/** Today falls inside the sprint's date range (dates are YYYY-MM-DD, compared as strings). */
+export const isOpenSprint = (sprint: Sprint): boolean => sprint.closed_at === null;
+
+/** Open, and today falls inside the date range (dates are YYYY-MM-DD, compared as strings). */
 export function isActiveSprint(sprint: Sprint, today: string = localToday()): boolean {
-  return sprint.start_date <= today && today <= sprint.end_date;
+  return isOpenSprint(sprint) && sprint.start_date <= today && today <= sprint.end_date;
+}
+
+/** Open but past its end date — waiting to be completed. */
+export function isOverdueSprint(sprint: Sprint, today: string = localToday()): boolean {
+  return isOpenSprint(sprint) && sprint.end_date < today;
 }
 
 export function localToday(now: Date = new Date()): string {

@@ -102,6 +102,10 @@ async def _validate_sprint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Sprint does not belong to this workspace",
         )
+    if sprint.closed_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint is closed"
+        )
 
 
 async def _out_many(session: AsyncSession, tasks: Sequence[Task]) -> list[TaskOut]:
@@ -251,7 +255,7 @@ async def update_task(
         await _validate_project(session, update_data["project_id"], task.workspace_id)
     if "assignee_id" in update_data:
         await _validate_assignee(session, update_data["assignee_id"], task.workspace_id)
-    if "sprint_id" in update_data:
+    if "sprint_id" in update_data and update_data["sprint_id"] != task.sprint_id:
         await _validate_sprint(session, update_data["sprint_id"], task.workspace_id)
     old_status = task.status
     for key, value in update_data.items():

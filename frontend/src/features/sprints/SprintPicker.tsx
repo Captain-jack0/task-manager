@@ -11,7 +11,8 @@ interface Props {
 
 /** One-click "move to sprint" control for cards — no edit form needed. */
 export function SprintPicker({ sprints, value, onChange, className }: Props) {
-  if (sprints.length === 0) return null;
+  const options = sprints.filter((s) => s.closed_at === null || s.id === value);
+  if (options.length === 0) return null;
   return (
     <select
       aria-label="Move to sprint"
@@ -24,7 +25,7 @@ export function SprintPicker({ sprints, value, onChange, className }: Props) {
       )}
     >
       <option value="">Backlog</option>
-      {sprints.map((s) => (
+      {options.map((s) => (
         <option key={s.id} value={s.id}>
           {s.name}
         </option>
