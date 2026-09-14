@@ -5,6 +5,7 @@ import type {
   Task,
   TaskCreateInput,
   TaskListFilters,
+  TaskLinkInput,
   TaskListResponse,
   TaskUpdateInput,
 } from '@/types/api';
@@ -42,6 +43,13 @@ export const tasksApi = {
   },
   remove: async (id: string): Promise<void> => {
     await apiClient.delete(`/tasks/${id}`);
+  },
+  addLink: async (id: string, input: TaskLinkInput): Promise<Task> => {
+    const { data } = await apiClient.post<Task>(`/tasks/${id}/links`, input);
+    return data;
+  },
+  removeLink: async (id: string, linkId: string): Promise<void> => {
+    await apiClient.delete(`/tasks/${id}/links/${linkId}`);
   },
   createGithubIssue: async (id: string): Promise<Task> => {
     const { data } = await apiClient.post<Task>(`/tasks/${id}/github-issue`);

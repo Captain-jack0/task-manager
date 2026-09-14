@@ -101,6 +101,21 @@ export interface Tag {
   created_at: string;
 }
 
+/** The other end of a task link. */
+export interface TaskRef {
+  link_id: string;
+  id: string;
+  title: string;
+  status: TaskStatus;
+}
+
+export type TaskLinkKind = 'blocks' | 'blocked_by' | 'relates';
+
+export interface TaskLinkInput {
+  target_id: string;
+  kind: TaskLinkKind;
+}
+
 export interface Task {
   id: string;
   user_id: string;
@@ -119,6 +134,9 @@ export interface Task {
   github_issue_url: string | null;
   github_issue_number: number | null;
   tags: Tag[];
+  blocked_by: TaskRef[];
+  blocks: TaskRef[];
+  related: TaskRef[];
   created_at: string;
   updated_at: string;
 }
