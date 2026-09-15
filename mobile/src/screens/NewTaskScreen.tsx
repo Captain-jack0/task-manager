@@ -7,6 +7,8 @@ import { AppButton, Field, Segmented } from '../components/ui';
 import { useCreateTask } from '../features/tasks/useTasks';
 import { DueField } from '../features/tasks/DueField';
 import { useProjects } from '../features/projects/useProjects';
+import { isOpenSprint, useSprints } from '../features/sprints/useSprints';
+import { useWorkspaceStore } from '../store/workspaceStore';
 import type { TabParamList } from '../navigation';
 import { colors, spacing } from '../theme';
 import type { Project, TaskEnergy, TaskPriority } from '../types/api';
@@ -32,6 +34,13 @@ export function NewTaskScreen() {
   const nav = useNavigation<BottomTabNavigationProp<TabParamList>>();
   const create = useCreateTask();
   const { data: projects } = useProjects();
+  const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId);
+  const { data: sprints } = useSprints(workspaceId);
+  const [sprintId, setSprintId] = useState('');
+  const sprintOptions = [
+    { label: 'Backlog', value: '' },
+    ...(sprints ?? []).filter(isOpenSprint).map((s) => ({ label: s.name, value: s.id })),
+  ];
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [energy, setEnergy] = useState<TaskEnergy | null>(null);
@@ -59,6 +68,7 @@ export function NewTaskScreen() {
         estimated_minutes: minutes ? Number(minutes) : undefined,
         due_date: dueDate ? dueDate.toISOString() : null,
         project_id: projectId || null,
+        sprint_id: sprintId || null,
       },
       {
         onSuccess: () => {
@@ -68,6 +78,7 @@ export function NewTaskScreen() {
           setMinutes(null);
           setDueDate(null);
           setProjectId('');
+          setSprintId('');
           nav.navigate('Tasks');
         },
         onError: (err) => setError(extractErrorMessage(err, 'Could not create task')),
@@ -112,6 +123,13 @@ export function NewTaskScreen() {
           <View style={{ gap: 8 }}>
             <Text style={styles.label}>Project</Text>
             <Segmented options={projectOptions} value={projectId} onChange={setProjectId} />
+          </View>
+        )}
+
+        {sprintOptions.length > 1 && (
+          <View style={{ gap: 8 }}>
+            <Text style={styles.label}>Sprint</Text>
+            <Segmented options={sprintOptions} value={sprintId} onChange={setSprintId} />
           </View>
         )}
 

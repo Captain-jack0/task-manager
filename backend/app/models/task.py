@@ -30,6 +30,15 @@ class TaskPriority(str, Enum):
     HIGH = "high"
 
 
+class Recurrence(str, Enum):
+    """How often a task comes back once it is closed."""
+
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+
+
 class TaskEnergy(str, Enum):
     """Mental effort a task needs — used by the 'What should I do now?' engine."""
 
@@ -62,6 +71,12 @@ class Task(Base, UUIDMixin, TimestampMixin):
     project_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # Optional parent for subtasks (one level). Deleting the parent removes them.
+    parent_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("tasks.id", ondelete="CASCADE"),
         nullable=True,
     )
     # Optional sprint (time-box) within the workspace; NULL = backlog. Deleting
@@ -102,6 +117,11 @@ class Task(Base, UUIDMixin, TimestampMixin):
     # Mental energy the task demands (null = unspecified).
     energy_level: Mapped[TaskEnergy | None] = mapped_column(
         SAEnum(TaskEnergy, name="task_energy", values_callable=lambda e: [m.value for m in e]),
+        nullable=True,
+    )
+    # Closing a task with a rule creates the next occurrence (see services/recurrence).
+    recurrence: Mapped[Recurrence | None] = mapped_column(
+        SAEnum(Recurrence, name="task_recurrence", values_callable=lambda e: [m.value for m in e]),
         nullable=True,
     )
     # How many times the task has been pushed to a later day (procrastination signal).

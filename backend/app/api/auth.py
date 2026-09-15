@@ -24,7 +24,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TokenResponse,
 )
-from app.schemas.user import UserOut
+from app.schemas.user import PasswordChange, ProfileUpdate, UserOut
 from app.services import mailer
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -55,7 +55,11 @@ async def register(
             status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
         )
 
-    user = User(email=payload.email.lower(), password_hash=hash_password(payload.password))
+    user = User(
+        email=payload.email.lower(),
+        password_hash=hash_password(payload.password),
+        full_name=payload.full_name,
+    )
     session.add(user)
     await session.flush()
 
@@ -127,4 +131,30 @@ async def reset_password(
 
 @router.get("/me", response_model=UserOut)
 async def me(current_user: CurrentUser) -> UserOut:
+    return UserOut.model_validate(current_user)
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_me(
+    payload: ProfileUpdate, current_user: CurrentUser, session: SessionDep
+) -> UserOut:
+    current_user.full_name = payload.full_name
+    await session.commit()
+    await session.refresh(current_user)
+    return UserOut.model_validate(current_user)
+
+
+@router.post("/change-password", response_model=UserOut)
+@limiter.limit("10/minute")
+async def change_password(
+    request: Request, payload: PasswordChange, current_user: CurrentUser, session: SessionDep
+) -> UserOut:
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect"
+        )
+    # Also invalidates any outstanding reset link, which is bound to the old hash.
+    current_user.password_hash = hash_password(payload.new_password)
+    await session.commit()
+    await session.refresh(current_user)
     return UserOut.model_validate(current_user)

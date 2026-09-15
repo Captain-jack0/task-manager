@@ -23,19 +23,35 @@ import { useCreateProject, useProjects } from '../features/projects/useProjects'
 import { GithubImportModal } from '../features/projects/GithubImportModal';
 import { useGithubStatus } from '../features/integrations/useGithub';
 import { useWorkspaces } from '../features/workspaces/useWorkspaces';
+import { isOpenSprint, useSprints } from '../features/sprints/useSprints';
+import { displayName } from '../lib/people';
+import { formatDuration } from '../features/time/useTimer';
 import { useMembers } from '../features/workspaces/useMembers';
 import type { RootStackParamList } from '../navigation';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { colors, priorityColor, spacing } from '../theme';
-import type { Member, Project, Task, TaskStatus, Workspace } from '../types/api';
+import type { Member, Project, Task, TaskEnergy, TaskPriority, TaskStatus, Workspace } from '../types/api';
 
 const STATUS_FILTERS: { label: string; value: 'all' | TaskStatus }[] = [
-  { label: 'All', value: 'all' },
+  { label: 'All open', value: 'all' },
   { label: 'To do', value: 'todo' },
   { label: 'In progress', value: 'in_progress' },
   { label: 'Blocked', value: 'blocked' },
   { label: 'Done', value: 'done' },
-  { label: 'Closed', value: 'closed' },
+  { label: 'Archive', value: 'closed' },
+];
+
+type SortKey = 'created_asc' | 'created_desc' | 'due' | 'priority';
+const SORTS: { label: string; value: SortKey; sort: 'created_at' | 'due_date' | 'priority'; order: 'asc' | 'desc' }[] = [
+  { label: 'Oldest first', value: 'created_asc', sort: 'created_at', order: 'asc' },
+  { label: 'Newest first', value: 'created_desc', sort: 'created_at', order: 'desc' },
+  { label: 'Due date', value: 'due', sort: 'due_date', order: 'asc' },
+  { label: 'Priority', value: 'priority', sort: 'priority', order: 'desc' },
+];
+const LEVELS: { label: string; value: 'high' | 'medium' | 'low' }[] = [
+  { label: 'High', value: 'high' },
+  { label: 'Medium', value: 'medium' },
+  { label: 'Low', value: 'low' },
 ];
 
 function Chip({
@@ -61,11 +77,27 @@ export function TasksScreen() {
   const { data: workspaces } = useWorkspaces();
   const { data: projects } = useProjects();
   const { data: members } = useMembers(workspaceId);
-  const tasksQuery = useTasks({ workspace_id: workspaceId ?? undefined, limit: 200 });
-  const tasks = tasksQuery.data?.data ?? [];
-
+  const { data: sprints } = useSprints(workspaceId);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>('all');
+  const [sprintFilter, setSprintFilter] = useState<'all' | 'backlog' | string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<'all' | TaskPriority>('all');
+  const [energyFilter, setEnergyFilter] = useState<'all' | TaskEnergy>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('created_asc');
+  const sortSpec = SORTS.find((s) => s.value === sortKey) ?? SORTS[0];
+  const tasksQuery = useTasks({
+    workspace_id: workspaceId ?? undefined,
+    limit: 200,
+    // "All open" hides the archive (closed tasks), like the web app.
+    archived: statusFilter === 'all' ? false : undefined,
+    sprint_id: sprintFilter !== 'all' && sprintFilter !== 'backlog' ? sprintFilter : undefined,
+    backlog: sprintFilter === 'backlog' ? true : undefined,
+    priority: priorityFilter === 'all' ? undefined : priorityFilter,
+    energy: energyFilter === 'all' ? undefined : energyFilter,
+    sort: sortSpec.sort,
+    order: sortSpec.order,
+  });
+  const tasks = tasksQuery.data?.data ?? [];
   const [projectFilter, setProjectFilter] = useState<'all' | string>('all');
   const [view, setView] = useState<'list' | 'board'>('list');
   const [showNewProject, setShowNewProject] = useState(false);
@@ -85,10 +117,19 @@ export function TasksScreen() {
   const assigneeEmailById = useMemo(() => {
     const map: Record<string, string> = {};
     (members ?? []).forEach((m: Member) => {
-      map[m.user_id] = m.email;
+      map[m.user_id] = displayName(m);
     });
     return map;
   }, [members]);
+
+  const sprintNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    (sprints ?? []).forEach((s) => {
+      map[s.id] = s.name;
+    });
+    return map;
+  }, [sprints]);
+  const openSprints = (sprints ?? []).filter(isOpenSprint);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -153,6 +194,38 @@ export function TasksScreen() {
         ))}
       </ScrollView>
 
+      {openSprints.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          <Chip label="All sprints" active={sprintFilter === 'all'} onPress={() => setSprintFilter('all')} />
+          <Chip label="Backlog" active={sprintFilter === 'backlog'} onPress={() => setSprintFilter('backlog')} />
+          {openSprints.map((s) => (
+            <Chip
+              key={s.id}
+              label={`${s.name} ${s.done_count}/${s.task_count}`}
+              active={sprintFilter === s.id}
+              onPress={() => setSprintFilter(s.id)}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+        <Chip label="Any priority" active={priorityFilter === 'all'} onPress={() => setPriorityFilter('all')} />
+        {LEVELS.map((l) => (
+          <Chip key={`p-${l.value}`} label={`! ${l.label}`} active={priorityFilter === l.value} onPress={() => setPriorityFilter(l.value)} />
+        ))}
+        <Chip label="Any energy" active={energyFilter === 'all'} onPress={() => setEnergyFilter('all')} />
+        {LEVELS.map((l) => (
+          <Chip key={`e-${l.value}`} label={`^ ${l.label}`} active={energyFilter === l.value} onPress={() => setEnergyFilter(l.value)} />
+        ))}
+      </ScrollView>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+        {SORTS.map((s) => (
+          <Chip key={s.value} label={`↕ ${s.label}`} active={sortKey === s.value} onPress={() => setSortKey(s.value)} />
+        ))}
+      </ScrollView>
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
         <Chip label="All projects" active={projectFilter === 'all'} onPress={() => setProjectFilter('all')} />
         {(projects ?? []).map((p: Project) => (
@@ -189,6 +262,7 @@ export function TasksScreen() {
               task={item}
               projectName={item.project_id ? projectNameById[item.project_id] : undefined}
               assigneeEmail={item.assignee_id ? assigneeEmailById[item.assignee_id] : undefined}
+              sprintName={item.sprint_id ? sprintNameById[item.sprint_id] : undefined}
               onPress={() => nav.navigate('TaskDetail', { id: item.id })}
             />
           )}
@@ -235,11 +309,13 @@ function TaskCard({
   task,
   projectName,
   assigneeEmail,
+  sprintName,
   onPress,
 }: {
   task: Task;
   projectName?: string;
   assigneeEmail?: string;
+  sprintName?: string;
   onPress: () => void;
 }) {
   const update = useUpdateTask();
@@ -267,6 +343,17 @@ function TaskCard({
           <Badge label={`~${task.estimated_minutes}m`} color={colors.faint} />
         )}
         {stuck && <Badge label={`snoozed ${task.snooze_count}×`} color={colors.warnText} />}
+        {sprintName && <Badge label={`⟳ ${sprintName}`} color={colors.primary} />}
+        {!isCompleted(task.status) && (task.blocked_by?.length ?? 0) > 0 && (
+          <Badge label={`⛔ blocked by ${task.blocked_by?.length}`} color={colors.danger} />
+        )}
+        {(task.subtask_total ?? 0) > 0 && (
+          <Badge label={`⤷ ${task.subtask_done ?? 0}/${task.subtask_total}`} color={colors.muted} />
+        )}
+        {task.recurrence && <Badge label={`↻ ${task.recurrence}`} color={colors.muted} />}
+        {(task.logged_minutes ?? 0) > 0 && (
+          <Badge label={`⏱ ${formatDuration(task.logged_minutes ?? 0)}`} color={colors.faint} />
+        )}
       </View>
 
       {!isCompleted(task.status) && (

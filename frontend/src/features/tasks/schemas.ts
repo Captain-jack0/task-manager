@@ -7,6 +7,7 @@ export const taskFormSchema = z.object({
   priority: z.enum(['low', 'medium', 'high']),
   due_date: z.string().optional().or(z.literal('')),
   energy_level: z.enum(['low', 'medium', 'high']).optional().or(z.literal('')),
+  recurrence: z.enum(['daily', 'weekly', 'biweekly', 'monthly']).optional().or(z.literal('')),
   project_id: z.string().optional().or(z.literal('')),
   sprint_id: z.string().optional().or(z.literal('')),
   assignee_id: z.string().optional().or(z.literal('')),

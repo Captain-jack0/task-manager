@@ -13,6 +13,7 @@ from sqlalchemy.orm import aliased
 
 from app.models.task import Task, TaskStatus
 from app.models.task_link import LinkKind, TaskLink
+from app.repositories import activity_repo
 
 FINISHED = (TaskStatus.DONE, TaskStatus.CLOSED)
 OPEN = (TaskStatus.TODO, TaskStatus.IN_PROGRESS)
@@ -99,6 +100,9 @@ async def release_if_unblocked(session: AsyncSession, task: Task) -> None:
     # blocker query below sees them instead of the last committed state.
     await session.flush()
     if task.status == TaskStatus.BLOCKED and await open_blockers(session, task_id=task.id) == 0:
+        await activity_repo.record(
+            session, task_id=task.id, actor_id=None, field="status", old_value=task.status, new_value=TaskStatus.TODO
+        )
         task.status = TaskStatus.TODO
 
 
@@ -110,4 +114,12 @@ async def propagate_blocker_status(session: AsyncSession, blocker: Task) -> None
         if blocker.status in FINISHED:
             await release_if_unblocked(session, dependent)
         elif dependent.status in OPEN:
+            await activity_repo.record(
+                session,
+                task_id=dependent.id,
+                actor_id=None,
+                field="status",
+                old_value=dependent.status,
+                new_value=TaskStatus.BLOCKED,
+            )
             dependent.status = TaskStatus.BLOCKED
