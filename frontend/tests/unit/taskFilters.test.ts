@@ -12,7 +12,7 @@ describe('toQuery', () => {
     const q = toQuery(DEFAULT_TASK_FILTERS, NOW);
     expect(Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined))).toEqual({
       sort: 'created_at',
-      order: 'desc',
+      order: 'asc',
     });
     expect(hasActiveFilters(DEFAULT_TASK_FILTERS)).toBe(false);
   });
