@@ -1,4 +1,5 @@
 import { Outlet, Link } from 'react-router-dom';
+import { displayName } from '@/lib/people';
 import { useEffect, useState } from 'react';
 import { Button } from './Button';
 import { useAuthStore } from '@/features/auth/authStore';
@@ -49,12 +50,14 @@ export function AppLayout() {
               {dark ? '☀' : '☾'}
             </button>
             {user && (
-              <span
-                className="hidden text-sm text-slate-500 sm:inline dark:text-slate-400"
-                data-testid="user-email"
+              <Link
+                to="/settings"
+                title="Profile settings"
+                className="hidden max-w-[12rem] truncate text-sm text-slate-500 transition-colors hover:text-slate-900 sm:inline dark:text-slate-400 dark:hover:text-white"
+                data-testid="user-name"
               >
-                {user.email}
-              </span>
+                {displayName(user)}
+              </Link>
             )}
             <Button variant="secondary" size="sm" onClick={logout}>
               Sign out

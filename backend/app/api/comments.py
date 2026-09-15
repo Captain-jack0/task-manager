@@ -25,10 +25,11 @@ async def list_comments(
             task_id=c.task_id,
             author_id=c.author_id,
             author_email=email,
+            author_name=name,
             body=c.body,
             created_at=c.created_at,
         )
-        for c, email in rows
+        for c, email, name in rows
     ]
 
 
@@ -50,6 +51,7 @@ async def create_comment(
         task_id=comment.task_id,
         author_id=comment.author_id,
         author_email=current_user.email,
+        author_name=current_user.full_name,
         body=comment.body,
         created_at=comment.created_at,
     )

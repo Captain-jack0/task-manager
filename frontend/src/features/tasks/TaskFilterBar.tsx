@@ -1,4 +1,5 @@
 import type { Member } from '@/types/api';
+import { displayName } from '@/lib/people';
 import {
   DEFAULT_TASK_FILTERS,
   hasActiveFilters,
@@ -65,7 +66,7 @@ export function TaskFilterBar({ value, onChange, members }: Props) {
         <option value="none">Unassigned</option>
         {members.map((m) => (
           <option key={m.user_id} value={m.user_id}>
-            {m.email}
+            {displayName(m)}
           </option>
         ))}
       </select>
