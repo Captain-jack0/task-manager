@@ -13,6 +13,14 @@ export function useSprints(workspaceId?: string) {
   });
 }
 
+export function useSprintReport(sprintId?: string) {
+  return useQuery({
+    queryKey: [...SPRINTS_KEY, 'report', sprintId ?? null],
+    queryFn: () => sprintsApi.report(sprintId as string),
+    enabled: Boolean(sprintId),
+  });
+}
+
 export function useCreateSprint() {
   const qc = useQueryClient();
   return useMutation({
