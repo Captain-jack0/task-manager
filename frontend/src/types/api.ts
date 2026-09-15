@@ -99,6 +99,12 @@ export interface SprintCloseResult {
   kept: number;
 }
 
+export interface BurndownPoint {
+  day: string;
+  remaining: number | null;
+  ideal: number;
+}
+
 export interface SprintReport {
   sprint: Sprint;
   by_status: Partial<Record<TaskStatus, number>>;
@@ -106,6 +112,7 @@ export interface SprintReport {
   finished: number;
   estimated_minutes: number;
   estimated_minutes_finished: number;
+  burndown: BurndownPoint[];
 }
 
 export interface SprintCreateInput {
