@@ -19,6 +19,7 @@ import { TaskForm } from './TaskForm';
 import { TaskLinksSection } from './TaskLinksSection';
 import { SubtasksSection } from './SubtasksSection';
 import { ActivitySection } from './ActivitySection';
+import { AttachmentsSection } from './AttachmentsSection';
 import type { TaskFormValues } from './schemas';
 import { RECURRENCE_LABEL, STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 import {
@@ -247,6 +248,8 @@ export function TaskDetailPage() {
               ))}
             </div>
           )}
+
+          <AttachmentsSection task={task} />
 
           <SubtasksSection task={task} />
 

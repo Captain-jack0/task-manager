@@ -205,6 +205,18 @@ export interface PasswordChangeInput {
   new_password: string;
 }
 
+export interface Attachment {
+  id: string;
+  task_id: string;
+  filename: string;
+  content_type: string;
+  size: number;
+  uploader_id: string | null;
+  uploader_email: string | null;
+  uploader_name: string | null;
+  created_at: string;
+}
+
 export interface TaskEvent {
   id: string;
   field: string;

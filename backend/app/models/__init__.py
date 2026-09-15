@@ -1,3 +1,4 @@
+from app.models.attachment import Attachment
 from app.models.comment import Comment
 from app.models.integration import GithubIntegration
 from app.models.notification import Notification, NotificationKind
@@ -12,6 +13,7 @@ from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceMember, WorkspaceRole
 
 __all__ = [
+    "Attachment",
     "Comment",
     "GithubIntegration",
     "LinkKind",
