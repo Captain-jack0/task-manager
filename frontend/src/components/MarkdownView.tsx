@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import Markdown, { type Components } from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/cn';
@@ -22,6 +23,9 @@ interface CheckboxSlot {
 // from context. Deterministic, unlike a render counter (StrictMode renders twice).
 const CheckboxContext = createContext<CheckboxSlot>({ index: -1 });
 
+// Lets the `code` renderer tell a fenced block (inside <pre>) from inline code.
+const InPreContext = createContext(false);
+
 function TaskCheckbox({ checked }: { checked?: boolean }) {
   const { index, onToggle } = useContext(CheckboxContext);
   const interactive = Boolean(onToggle) && index >= 0;
@@ -37,7 +41,50 @@ function TaskCheckbox({ checked }: { checked?: boolean }) {
   );
 }
 
-/** Renders task Markdown (GFM: tables, checklists, strikethrough). Raw HTML is never rendered. */
+/** Fenced code block with a hover "Copy" button. */
+function CodeBlock({ children }: { children?: ReactNode }) {
+  const ref = useRef<HTMLPreElement>(null);
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(ref.current?.innerText ?? '');
+      setState('copied');
+    } catch {
+      // Clipboard unavailable (insecure context / permission denied).
+      setState('failed');
+    }
+    setTimeout(() => setState('idle'), 1500);
+  };
+
+  return (
+    <div className="group relative my-2">
+      <pre
+        ref={ref}
+        className="overflow-x-auto rounded-lg bg-slate-100 p-3 text-xs leading-relaxed dark:bg-slate-800"
+      >
+        <InPreContext.Provider value>{children}</InPreContext.Provider>
+      </pre>
+      <button
+        type="button"
+        onClick={() => void copy()}
+        className="absolute right-2 top-2 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-500 opacity-0 transition-opacity hover:text-slate-900 focus-visible:opacity-100 group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white"
+      >
+        {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy'}
+      </button>
+    </div>
+  );
+}
+
+function Code({ className, children }: { className?: string; children?: ReactNode }) {
+  const inPre = useContext(InPreContext);
+  if (inPre) return <code className={cn('font-mono', className)}>{children}</code>;
+  return (
+    <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-slate-800">{children}</code>
+  );
+}
+
+/** Renders task Markdown (GFM: tables, checklists, strikethrough; highlighted code). Raw HTML is never rendered. */
 export function MarkdownView({ text, className, onToggleCheckbox }: Props) {
   const lines = useMemo(() => checkboxLines(text), [text]);
 
@@ -73,12 +120,8 @@ export function MarkdownView({ text, className, onToggleCheckbox }: Props) {
       );
     },
     input: TaskCheckbox,
-    code: ({ children }) => (
-      <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.85em] dark:bg-slate-800">{children}</code>
-    ),
-    pre: ({ children }) => (
-      <pre className="my-2 overflow-x-auto rounded-lg bg-slate-100 p-3 text-xs dark:bg-slate-800">{children}</pre>
-    ),
+    code: Code,
+    pre: CodeBlock,
     blockquote: ({ children }) => (
       <blockquote className="my-2 border-l-2 border-slate-300 pl-3 text-slate-500 dark:border-slate-600 dark:text-slate-400">
         {children}
@@ -100,7 +143,11 @@ export function MarkdownView({ text, className, onToggleCheckbox }: Props) {
 
   return (
     <div className={cn('text-sm leading-relaxed text-slate-700 dark:text-slate-300', className)}>
-      <Markdown remarkPlugins={[remarkGfm, remarkBreaks]} components={components}>
+      <Markdown
+        remarkPlugins={[remarkGfm, remarkBreaks]}
+        rehypePlugins={[rehypeHighlight]}
+        components={components}
+      >
         {text}
       </Markdown>
     </div>
