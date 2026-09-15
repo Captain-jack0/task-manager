@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { extractErrorMessage } from '@/api/client';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
+import { displayName, initial } from '@/lib/people';
 import type { TaskStatus } from '@/types/api';
 import { useGithubStatus } from '@/features/integrations/useGithub';
 import { useProjects } from '@/features/projects/useProjects';
@@ -16,8 +17,9 @@ import { useMembers } from '@/features/workspaces/useMembers';
 import { CommentsSection } from './CommentsSection';
 import { TaskForm } from './TaskForm';
 import { TaskLinksSection } from './TaskLinksSection';
+import { SubtasksSection } from './SubtasksSection';
 import type { TaskFormValues } from './schemas';
-import { STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
+import { RECURRENCE_LABEL, STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 import {
   useCreateGithubIssue,
   useDeleteTask,
@@ -74,6 +76,7 @@ export function TaskDetailPage() {
           priority: values.priority,
           due_date: values.due_date ? new Date(values.due_date).toISOString() : null,
           energy_level: values.energy_level || null,
+          recurrence: values.recurrence || null,
           estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
           project_id: values.project_id || null,
           sprint_id: values.sprint_id || null,
@@ -172,7 +175,15 @@ export function TaskDetailPage() {
             </span>
           </div>
 
-          <h1 className={cn('mt-3 text-xl font-semibold tracking-tight', isCompleted(task.status) && 'line-through')}>
+          {task.parent && (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              ↑ Part of{' '}
+              <Link to={`/tasks/${task.parent.id}`} className="font-medium text-slate-700 hover:underline dark:text-slate-200">
+                {task.parent.title}
+              </Link>
+            </p>
+          )}
+          <h1 className={cn('mt-3 text-xl font-semibold tracking-tight', isCompleted(task.status) && 'line-through', task.parent && 'mt-1')}>
             {task.title}
           </h1>
 
@@ -195,9 +206,9 @@ export function TaskDetailPage() {
             {assignee && (
               <span className="inline-flex items-center gap-1.5">
                 <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-                  {assignee.email[0]}
+                  {initial(assignee)}
                 </span>
-                {assignee.email}
+                {displayName(assignee)}
               </span>
             )}
             {task.due_date && (
@@ -207,6 +218,9 @@ export function TaskDetailPage() {
             )}
             {task.estimated_minutes != null && <span>~{task.estimated_minutes} min</span>}
             {task.energy_level && <span className="capitalize">{task.energy_level} energy</span>}
+            {task.recurrence && (
+              <span title="Closing this task creates the next occurrence">↻ {RECURRENCE_LABEL[task.recurrence]}</span>
+            )}
             {task.snooze_count > 0 && <span>snoozed {task.snooze_count}×</span>}
           </div>
 
@@ -232,6 +246,8 @@ export function TaskDetailPage() {
               ))}
             </div>
           )}
+
+          <SubtasksSection task={task} />
 
           <TaskLinksSection task={task} />
 

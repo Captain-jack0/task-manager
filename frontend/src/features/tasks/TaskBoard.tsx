@@ -6,11 +6,12 @@ import type { Member, Project, Sprint, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { SprintPicker } from '@/features/sprints/SprintPicker';
 import { cn } from '@/lib/cn';
+import { displayName } from '@/lib/people';
 import { checklistLabel } from '@/lib/markdown';
 import { scheduleIso, dateStrToIso } from '@/lib/schedule';
 import { formatDate } from '@/lib/date';
 import { useUpdateTask } from './useTasks';
-import { STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
+import { RECURRENCE_LABEL, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 
 const COLUMNS = STATUS_ORDER.map((status) => ({ status, label: STATUS_LABEL[status] }));
 
@@ -18,7 +19,9 @@ const boardMeta = (task: Task): string =>
   [
     task.estimated_minutes != null && `~${task.estimated_minutes}m`,
     task.energy_level && `${task.energy_level} energy`,
+    task.recurrence && `↻ ${RECURRENCE_LABEL[task.recurrence]}`,
     checklistLabel(task.description),
+    task.subtask_total > 0 && `⤷ ${task.subtask_done}/${task.subtask_total}`,
     !isCompleted(task.status) && task.blocked_by.length > 0 && `⛔ blocked by ${task.blocked_by.length}`,
   ]
     .filter(Boolean)
@@ -45,7 +48,7 @@ export function TaskBoard({
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStatus, setOverStatus] = useState<TaskStatus | null>(null);
   const projectById = new Map(projects.map((p) => [p.id, p]));
-  const emailById = new Map(members.map((m) => [m.user_id, m.email]));
+  const nameById = new Map(members.map((m) => [m.user_id, displayName(m)]));
 
   const move = (id: string, status: TaskStatus) => {
     const task = tasks.find((t) => t.id === id);
@@ -208,12 +211,12 @@ export function TaskBoard({
                       {projectById.get(task.project_id)?.name}
                     </div>
                   )}
-                  {task.assignee_id && emailById.has(task.assignee_id) && (
+                  {task.assignee_id && nameById.has(task.assignee_id) && (
                     <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
                       <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-                        {emailById.get(task.assignee_id)?.[0]}
+                        {nameById.get(task.assignee_id)?.[0]}
                       </span>
-                      <span className="truncate">{emailById.get(task.assignee_id)}</span>
+                      <span className="truncate">{nameById.get(task.assignee_id)}</span>
                     </div>
                   )}
                   {task.tags.length > 0 && (
