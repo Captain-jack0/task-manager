@@ -12,6 +12,7 @@ from app.api import (
     calendar,
     comments,
     integrations,
+    notifications,
     projects,
     sprints,
     tags,
@@ -67,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(tags.router)
     app.include_router(integrations.router)
     app.include_router(calendar.router)
+    app.include_router(notifications.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:
