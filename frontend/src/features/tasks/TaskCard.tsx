@@ -20,6 +20,8 @@ interface Props {
   projectColor?: string | null;
   assigneeName?: string;
   sprints?: Sprint[];
+  selected?: boolean;
+  onSelect?: (checked: boolean) => void;
   onToggleStatus: (next: TaskStatus) => void;
   onMoveToSprint?: (sprintId: string | null) => void;
   onSnooze: () => void;
@@ -33,6 +35,8 @@ export function TaskCard({
   projectColor,
   assigneeName,
   sprints = [],
+  selected = false,
+  onSelect,
   onToggleStatus,
   onMoveToSprint,
   onSnooze,
@@ -49,14 +53,24 @@ export function TaskCard({
       className={cn(
         'group flex flex-col rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700',
         done && 'opacity-60',
+        selected && 'border-slate-400 ring-2 ring-slate-300 dark:border-slate-500 dark:ring-slate-600',
       )}
       data-testid="task-card"
     >
       <div className="flex items-start justify-between gap-3">
+        {onSelect && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => onSelect(e.target.checked)}
+            aria-label={`Select ${task.title}`}
+            className="mt-1 shrink-0 cursor-pointer accent-slate-900 dark:accent-white"
+          />
+        )}
         <Link
           to={`/tasks/${task.id}`}
           className={cn(
-            'block text-sm font-semibold leading-snug tracking-tight hover:text-slate-500 dark:hover:text-slate-400',
+            'block min-w-0 flex-1 text-sm font-semibold leading-snug tracking-tight hover:text-slate-500 dark:hover:text-slate-400',
             done && 'line-through',
           )}
         >

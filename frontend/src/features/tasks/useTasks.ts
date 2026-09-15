@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import type {
   SuggestParams,
   Task,
+  TaskBulkChanges,
   TaskCreateInput,
   TaskLinkInput,
   TaskListFilters,
@@ -40,6 +41,28 @@ export function useSyncGithubIssue() {
   return useMutation({
     mutationFn: (id: string) => tasksApi.syncGithubIssue(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
+
+const invalidateAfterBulk = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: TASKS_KEY });
+  qc.invalidateQueries({ queryKey: ['sprints'] });
+};
+
+export function useBulkUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, changes }: { ids: string[]; changes: TaskBulkChanges }) =>
+      tasksApi.bulkUpdate(ids, changes),
+    onSuccess: () => invalidateAfterBulk(qc),
+  });
+}
+
+export function useBulkDelete() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => tasksApi.bulkDelete(ids),
+    onSuccess: () => invalidateAfterBulk(qc),
   });
 }
 

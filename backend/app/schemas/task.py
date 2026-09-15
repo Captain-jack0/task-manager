@@ -91,6 +91,25 @@ class TaskOut(TaskBase):
     updated_at: datetime
 
 
+class TaskBulkIds(BaseModel):
+    task_ids: list[UUID] = Field(min_length=1, max_length=200)
+
+
+class TaskBulkUpdate(TaskBulkIds):
+    """Fields left unset are untouched; `sprint_id: null` means the backlog."""
+
+    status: TaskStatus | None = None
+    priority: TaskPriority | None = None
+    sprint_id: UUID | None = None
+    project_id: UUID | None = None
+    assignee_id: UUID | None = None
+    add_tag_ids: list[UUID] | None = None
+
+
+class BulkResult(BaseModel):
+    count: int
+
+
 class TaskListResponse(BaseModel):
     data: list[TaskOut]
     total: int
