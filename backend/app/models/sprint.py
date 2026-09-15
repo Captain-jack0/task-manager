@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,3 +26,5 @@ class Sprint(Base, UUIDMixin, TimestampMixin):
     # Set when the sprint is completed. A closed sprint is history: its
     # unfinished tasks were carried over and no new task can join it.
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # How many unfinished tasks were moved out when the sprint was completed.
+    carried_over: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)

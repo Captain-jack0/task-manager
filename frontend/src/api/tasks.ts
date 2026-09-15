@@ -1,10 +1,13 @@
 import { apiClient } from './client';
 import type {
+  BulkResult,
   SuggestParams,
   SuggestResponse,
   Task,
   TaskCreateInput,
   TaskListFilters,
+  TaskBulkChanges,
+  TaskEvent,
   TaskLinkInput,
   TaskListResponse,
   TaskUpdateInput,
@@ -43,6 +46,18 @@ export const tasksApi = {
   },
   remove: async (id: string): Promise<void> => {
     await apiClient.delete(`/tasks/${id}`);
+  },
+  bulkUpdate: async (taskIds: string[], changes: TaskBulkChanges): Promise<BulkResult> => {
+    const { data } = await apiClient.post<BulkResult>('/tasks/bulk', { task_ids: taskIds, ...changes });
+    return data;
+  },
+  bulkDelete: async (taskIds: string[]): Promise<BulkResult> => {
+    const { data } = await apiClient.post<BulkResult>('/tasks/bulk-delete', { task_ids: taskIds });
+    return data;
+  },
+  activity: async (id: string): Promise<TaskEvent[]> => {
+    const { data } = await apiClient.get<TaskEvent[]>(`/tasks/${id}/activity`);
+    return data;
   },
   addLink: async (id: string, input: TaskLinkInput): Promise<Task> => {
     const { data } = await apiClient.post<Task>(`/tasks/${id}/links`, input);
