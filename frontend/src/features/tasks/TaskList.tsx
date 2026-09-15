@@ -12,9 +12,18 @@ interface Props {
   sprints?: Sprint[];
   selected?: Set<string>;
   onToggleSelect?: (id: string, checked: boolean) => void;
+  focusedId?: string;
 }
 
-export function TaskList({ tasks, projects, members, sprints = [], selected, onToggleSelect }: Props) {
+export function TaskList({
+  tasks,
+  projects,
+  members,
+  sprints = [],
+  selected,
+  onToggleSelect,
+  focusedId,
+}: Props) {
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
   const snoozeMutation = useSnooze();
@@ -77,6 +86,7 @@ export function TaskList({ tasks, projects, members, sprints = [], selected, onT
             assigneeName={task.assignee_id ? nameById.get(task.assignee_id) : undefined}
             sprints={sprints}
             selected={selected?.has(task.id) ?? false}
+            focused={focusedId === task.id}
             onSelect={onToggleSelect ? (checked) => onToggleSelect(task.id, checked) : undefined}
             onToggleStatus={(next) => handleStatus(task.id, next)}
             onMoveToSprint={(sprintId) => handleSprint(task.id, sprintId)}
