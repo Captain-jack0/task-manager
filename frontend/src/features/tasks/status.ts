@@ -34,6 +34,13 @@ export const STATUS_BADGE: Record<TaskStatus, string> = {
   closed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
 };
 
+export const RECURRENCE_LABEL: Record<'daily' | 'weekly' | 'biweekly' | 'monthly', string> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  biweekly: 'Every 2 weeks',
+  monthly: 'Monthly',
+};
+
 /** Statuses treated as "finished" (struck through, not overdue, not suggested). */
 const COMPLETED: TaskStatus[] = ['done', 'closed'];
 export const isCompleted = (status: TaskStatus): boolean => COMPLETED.includes(status);
