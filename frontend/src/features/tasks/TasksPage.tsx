@@ -11,6 +11,7 @@ import { useTags, useDeleteTag } from '@/features/tags/useTags';
 import { useCreateProject, useDeleteProject, useProjects } from '@/features/projects/useProjects';
 import { CompleteSprintModal } from '@/features/sprints/CompleteSprintModal';
 import { SprintForm } from '@/features/sprints/SprintForm';
+import { SprintReportModal } from '@/features/sprints/SprintReportModal';
 import { SprintSidebar, type SprintFilter } from '@/features/sprints/SprintSidebar';
 import { useCreateSprint, useDeleteSprint, useSprints, useUpdateSprint } from '@/features/sprints/useSprints';
 import { useGithubRepos, useGithubStatus } from '@/features/integrations/useGithub';
@@ -48,6 +49,7 @@ export function TasksPage() {
   const [sprintFormOpen, setSprintFormOpen] = useState(false);
   const [completingSprint, setCompletingSprint] = useState<Sprint | null>(null);
   const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
+  const [reportSprint, setReportSprint] = useState<Sprint | null>(null);
   // Memoised so the "now"-relative due ranges don't change the query key every render.
   const fieldQuery = useMemo(() => toQuery(filters), [filters]);
 
@@ -272,6 +274,7 @@ export function TasksPage() {
             value={sprintFilter}
             onChange={setSprintFilter}
             onNew={() => setSprintFormOpen(true)}
+            onReport={setReportSprint}
             onEdit={setEditingSprint}
             onComplete={setCompletingSprint}
             onDelete={handleDeleteSprint}
@@ -459,6 +462,8 @@ export function TasksPage() {
           isSubmitting={createTask.isPending}
         />
       </Modal>
+
+      <SprintReportModal sprint={reportSprint} onClose={() => setReportSprint(null)} />
 
       <CompleteSprintModal
         sprint={completingSprint}

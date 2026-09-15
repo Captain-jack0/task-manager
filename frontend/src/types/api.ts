@@ -85,6 +85,8 @@ export interface Sprint {
   end_date: string;
   /** ISO datetime once the sprint was completed; null while open. */
   closed_at: string | null;
+  /** Unfinished tasks moved out when the sprint was completed. */
+  carried_over: number;
   task_count: number;
   done_count: number;
   created_at: string;
@@ -94,6 +96,15 @@ export interface SprintCloseResult {
   sprint: Sprint;
   moved: number;
   kept: number;
+}
+
+export interface SprintReport {
+  sprint: Sprint;
+  by_status: Partial<Record<TaskStatus, number>>;
+  total: number;
+  finished: number;
+  estimated_minutes: number;
+  estimated_minutes_finished: number;
 }
 
 export interface SprintCreateInput {

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from uuid import UUID
 
@@ -65,6 +66,7 @@ async def close(session: AsyncSession, *, sprint: Sprint, move_to: UUID | None) 
     await session.execute(update(Task).where(unfinished).values(sprint_id=move_to))
     kept = await session.scalar(select(func.count(Task.id)).where(Task.sprint_id == sprint.id))
     sprint.closed_at = datetime.now(UTC)
+    sprint.carried_over = int(moved or 0)
     await session.commit()
     await session.refresh(sprint)
     return int(moved or 0), int(kept or 0)
@@ -79,3 +81,34 @@ async def task_counts(session: AsyncSession, *, workspace_id: UUID) -> dict[UUID
         .group_by(Task.sprint_id)
     )
     return {sid: (int(total), int(done or 0)) for sid, total, done in result.all()}
+
+
+@dataclass(frozen=True)
+class SprintReportData:
+    by_status: dict[str, int]
+    total: int
+    finished: int
+    estimated_minutes: int
+    estimated_minutes_finished: int
+
+
+async def report(session: AsyncSession, *, sprint: Sprint) -> SprintReportData:
+    """Task counts and estimated minutes per status for one sprint."""
+    rows = await session.execute(
+        select(Task.status, func.count(Task.id), func.coalesce(func.sum(Task.estimated_minutes), 0))
+        .where(Task.sprint_id == sprint.id)
+        .group_by(Task.status)
+    )
+    by_status = {s.value: 0 for s in TaskStatus}
+    minutes = {s.value: 0 for s in TaskStatus}
+    for st, count, mins in rows.all():
+        by_status[st.value] = int(count)
+        minutes[st.value] = int(mins or 0)
+    finished = (TaskStatus.DONE.value, TaskStatus.CLOSED.value)
+    return SprintReportData(
+        by_status=by_status,
+        total=sum(by_status.values()),
+        finished=sum(by_status[s] for s in finished),
+        estimated_minutes=sum(minutes.values()),
+        estimated_minutes_finished=sum(minutes[s] for s in finished),
+    )
