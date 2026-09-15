@@ -6,6 +6,7 @@ import { extractErrorMessage } from '@/api/client';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
+import { displayName, initial } from '@/lib/people';
 import type { TaskStatus } from '@/types/api';
 import { useGithubStatus } from '@/features/integrations/useGithub';
 import { useProjects } from '@/features/projects/useProjects';
@@ -195,9 +196,9 @@ export function TaskDetailPage() {
             {assignee && (
               <span className="inline-flex items-center gap-1.5">
                 <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-                  {assignee.email[0]}
+                  {initial(assignee)}
                 </span>
-                {assignee.email}
+                {displayName(assignee)}
               </span>
             )}
             {task.due_date && (
