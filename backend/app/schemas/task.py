@@ -100,6 +100,8 @@ class TaskOut(TaskBase):
     parent: TaskParentRef | None = None
     subtask_total: int = 0
     subtask_done: int = 0
+    # Finished timer / logged minutes across everyone (see /tasks/{id}/time).
+    logged_minutes: int = 0
     created_at: datetime
     updated_at: datetime
 

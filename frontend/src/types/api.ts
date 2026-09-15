@@ -172,6 +172,7 @@ export interface Task {
   parent: TaskParentRef | null;
   subtask_total: number;
   subtask_done: number;
+  logged_minutes: number;
   created_at: string;
   updated_at: string;
 }
@@ -203,6 +204,51 @@ export interface ProfileUpdateInput {
 export interface PasswordChangeInput {
   current_password: string;
   new_password: string;
+}
+
+export interface TimeEntry {
+  id: string;
+  task_id: string;
+  user_id: string;
+  user_email: string | null;
+  user_name: string | null;
+  started_at: string;
+  ended_at: string | null;
+  minutes: number;
+  note: string | null;
+}
+
+export interface TimeEntryCreateInput {
+  started_at: string;
+  ended_at: string;
+  note?: string | null;
+}
+
+export interface TaskTime {
+  entries: TimeEntry[];
+  total_minutes: number;
+  running: TimeEntry | null;
+}
+
+export interface RunningTimer {
+  entry: TimeEntry;
+  task_title: string;
+}
+
+export interface TimeReportRow {
+  task_id: string;
+  task_title: string;
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  minutes: number;
+}
+
+export interface TimeReport {
+  start_at: string;
+  end_at: string;
+  rows: TimeReportRow[];
+  total_minutes: number;
 }
 
 export interface Attachment {

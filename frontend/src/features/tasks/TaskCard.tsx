@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import type { Sprint, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { SprintPicker } from '@/features/sprints/SprintPicker';
+import { TimerButton } from '@/features/time/TimerButton';
+import { formatDuration } from '@/features/time/useTime';
 import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
 import { checklistLabel, stripMarkdown } from '@/lib/markdown';
@@ -146,12 +148,21 @@ export function TaskCard({
       {(task.estimated_minutes != null ||
         task.energy_level ||
         task.recurrence ||
+        task.logged_minutes > 0 ||
         task.snooze_count > 0 ||
         checklist ||
         task.subtask_total > 0 ||
         task.blocked_by.length > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
           {task.estimated_minutes != null && <span>~{task.estimated_minutes}m</span>}
+          {task.logged_minutes > 0 && (
+            <span
+              title="Time logged"
+              className={task.estimated_minutes != null && task.logged_minutes > task.estimated_minutes ? 'text-amber-600 dark:text-amber-400' : undefined}
+            >
+              ⏱ {formatDuration(task.logged_minutes)}
+            </span>
+          )}
           {checklist && <span title="Checklist progress">{checklist}</span>}
           {task.subtask_total > 0 && (
             <span title="Subtasks done">⤷ {task.subtask_done}/{task.subtask_total}</span>
@@ -219,6 +230,7 @@ export function TaskCard({
           Move to {STATUS_LABEL[nextStatus]} →
         </button>
         <div className="flex items-center gap-3">
+          {!done && <TimerButton taskId={task.id} />}
           {onMoveToSprint && (
             <SprintPicker sprints={sprints} value={task.sprint_id} onChange={onMoveToSprint} />
           )}

@@ -20,6 +20,7 @@ import { TaskLinksSection } from './TaskLinksSection';
 import { SubtasksSection } from './SubtasksSection';
 import { ActivitySection } from './ActivitySection';
 import { AttachmentsSection } from './AttachmentsSection';
+import { TimeSection } from '@/features/time/TimeSection';
 import type { TaskFormValues } from './schemas';
 import { RECURRENCE_LABEL, STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 import {
@@ -248,6 +249,8 @@ export function TaskDetailPage() {
               ))}
             </div>
           )}
+
+          <TimeSection task={task} />
 
           <AttachmentsSection task={task} />
 

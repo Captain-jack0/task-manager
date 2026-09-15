@@ -8,6 +8,7 @@ import { SprintPicker } from '@/features/sprints/SprintPicker';
 import { cn } from '@/lib/cn';
 import { displayName } from '@/lib/people';
 import { checklistLabel } from '@/lib/markdown';
+import { formatDuration } from '@/features/time/useTime';
 import { scheduleIso, dateStrToIso } from '@/lib/schedule';
 import { formatDate } from '@/lib/date';
 import { useUpdateTask } from './useTasks';
@@ -18,6 +19,7 @@ const COLUMNS = STATUS_ORDER.map((status) => ({ status, label: STATUS_LABEL[stat
 const boardMeta = (task: Task): string =>
   [
     task.estimated_minutes != null && `~${task.estimated_minutes}m`,
+    task.logged_minutes > 0 && `⏱ ${formatDuration(task.logged_minutes)}`,
     task.energy_level && `${task.energy_level} energy`,
     task.recurrence && `↻ ${RECURRENCE_LABEL[task.recurrence]}`,
     checklistLabel(task.description),

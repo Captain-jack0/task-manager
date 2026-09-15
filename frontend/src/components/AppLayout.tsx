@@ -8,6 +8,7 @@ import { WorkspaceSwitcher } from '@/features/workspaces/WorkspaceSwitcher';
 import { GithubSettings } from '@/features/integrations/GithubSettings';
 import { CalendarSubscribe } from '@/features/calendar/CalendarSubscribe';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
+import { RunningTimerIndicator } from '@/features/time/RunningTimerIndicator';
 
 export function AppLayout() {
   const user = useAuthStore((s) => s.user);
@@ -37,9 +38,16 @@ export function AppLayout() {
             >
               Review
             </Link>
+            <Link
+              to="/time"
+              className="hidden text-sm text-slate-500 transition-colors hover:text-slate-900 sm:inline dark:text-slate-400 dark:hover:text-white"
+            >
+              Time
+            </Link>
             <WorkspaceSwitcher />
           </div>
           <div className="flex items-center gap-2">
+            <RunningTimerIndicator />
             <NotificationBell />
             <CalendarSubscribe />
             <GithubSettings />
