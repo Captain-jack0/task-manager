@@ -134,6 +134,12 @@ export interface TaskRef {
 
 export type TaskLinkKind = 'blocks' | 'blocked_by' | 'relates';
 
+export interface TaskParentRef {
+  id: string;
+  title: string;
+  status: TaskStatus;
+}
+
 export interface TaskLinkInput {
   target_id: string;
   kind: TaskLinkKind;
@@ -160,6 +166,10 @@ export interface Task {
   blocked_by: TaskRef[];
   blocks: TaskRef[];
   related: TaskRef[];
+  parent_id: string | null;
+  parent: TaskParentRef | null;
+  subtask_total: number;
+  subtask_done: number;
   created_at: string;
   updated_at: string;
 }
@@ -234,6 +244,7 @@ export interface TaskCreateInput {
   project_id?: string | null;
   assignee_id?: string | null;
   sprint_id?: string | null;
+  parent_id?: string | null;
   tag_ids?: string[];
 }
 
@@ -288,6 +299,7 @@ export interface TaskListFilters {
   backlog?: boolean;
   /** false = hide closed tasks (the archive), true = only closed. */
   archived?: boolean;
+  parent_id?: string;
   priority?: TaskPriority;
   energy?: TaskEnergy;
   due_before?: string;
