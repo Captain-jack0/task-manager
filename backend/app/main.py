@@ -8,14 +8,19 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api import (
+    activity,
+    attachments,
     auth,
     calendar,
     comments,
     integrations,
+    notifications,
     projects,
+    reports,
     sprints,
     tags,
     tasks,
+    time,
     workspaces,
 )
 from app.config import get_settings
@@ -67,6 +72,11 @@ def create_app() -> FastAPI:
     app.include_router(tags.router)
     app.include_router(integrations.router)
     app.include_router(calendar.router)
+    app.include_router(notifications.router)
+    app.include_router(activity.router)
+    app.include_router(attachments.router)
+    app.include_router(time.router)
+    app.include_router(reports.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

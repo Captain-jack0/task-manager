@@ -15,6 +15,8 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Display name shown instead of the email; optional for older accounts.
+    full_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     # Secret token for the read-only iCal subscription feed. Null until the user
     # first opens their calendar link; unguessable (256-bit) so the public
     # /calendar/feed/{token}.ics endpoint needs no auth header.

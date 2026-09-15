@@ -47,6 +47,8 @@ async def list_tasks(
     unassigned: bool = False,
     sprint_id: UUID | None = None,
     backlog: bool = False,
+    archived: bool | None = None,
+    parent_id: UUID | None = None,
     priority: TaskPriority | None = None,
     energy: TaskEnergy | None = None,
     due_before: datetime | None = None,
@@ -55,7 +57,7 @@ async def list_tasks(
     max_minutes: int | None = None,
     search: str | None = None,
     sort: str = "created_at",
-    order: str = "desc",
+    order: str = "asc",
     page: int = 1,
     limit: int = 20,
 ) -> tuple[Sequence[Task], int]:
@@ -72,6 +74,13 @@ async def list_tasks(
         conditions.append(Task.sprint_id.is_(None))
     elif sprint_id is not None:
         conditions.append(Task.sprint_id == sprint_id)
+    if parent_id is not None:
+        conditions.append(Task.parent_id == parent_id)
+    # Closed tasks are the archive: hidden from the default list, browsable on their own.
+    if archived is True:
+        conditions.append(Task.status == TaskStatus.CLOSED)
+    elif archived is False:
+        conditions.append(Task.status != TaskStatus.CLOSED)
     if priority is not None:
         conditions.append(Task.priority == priority)
     if energy is not None:
@@ -170,3 +179,32 @@ async def update_task(session: AsyncSession, *, task: Task, tags: list[Tag] | No
 async def delete_task(session: AsyncSession, *, task: Task) -> None:
     await session.delete(task)
     await session.commit()
+
+
+async def has_subtasks(session: AsyncSession, *, task_id: UUID) -> bool:
+    count = await session.scalar(select(func.count(Task.id)).where(Task.parent_id == task_id))
+    return bool(count)
+
+
+async def subtask_summary(
+    session: AsyncSession, *, tasks: Sequence[Task]
+) -> tuple[dict[UUID, dict[str, Any]], dict[UUID, tuple[int, int]]]:
+    """(parent refs for tasks that have one, (total, done) per task that has children)."""
+    parent_ids = {t.parent_id for t in tasks if t.parent_id is not None}
+    parents: dict[UUID, dict[str, Any]] = {}
+    if parent_ids:
+        rows = await session.execute(
+            select(Task.id, Task.title, Task.status).where(Task.id.in_(parent_ids))
+        )
+        parents = {pid: {"id": pid, "title": title, "status": st} for pid, title, st in rows.all()}
+    counts: dict[UUID, tuple[int, int]] = {}
+    ids = [t.id for t in tasks]
+    if ids:
+        done = case((Task.status.in_([TaskStatus.DONE, TaskStatus.CLOSED]), 1), else_=0)
+        rows = await session.execute(
+            select(Task.parent_id, func.count(Task.id), func.sum(done))
+            .where(Task.parent_id.in_(ids))
+            .group_by(Task.parent_id)
+        )
+        counts = {pid: (int(total), int(d or 0)) for pid, total, d in rows.all()}
+    return parents, counts

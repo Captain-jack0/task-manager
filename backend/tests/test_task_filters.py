@@ -88,3 +88,20 @@ async def test_field_filters_and_sorting(
 
     bad = await client.get("/tasks?sort=password_hash", headers=auth_headers)
     assert bad.status_code == 422
+
+
+async def test_archived_filter_splits_closed_from_open(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    await client.post("/tasks", json={"title": "open one"}, headers=auth_headers)
+    await client.post("/tasks", json={"title": "shipped", "status": "closed"}, headers=auth_headers)
+    await client.post("/tasks", json={"title": "in test", "status": "done"}, headers=auth_headers)
+
+    async def titles(qs: str) -> list[str]:
+        r = await client.get(f"/tasks?{qs}&sort=title&order=asc", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        return [t["title"] for t in r.json()["data"]]
+
+    assert await titles("archived=false") == ["in test", "open one"]
+    assert await titles("archived=true") == ["shipped"]
+    assert await titles("limit=10") == ["in test", "open one", "shipped"]
