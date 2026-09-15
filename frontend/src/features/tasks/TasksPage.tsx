@@ -11,8 +11,9 @@ import { useTags, useDeleteTag } from '@/features/tags/useTags';
 import { useCreateProject, useDeleteProject, useProjects } from '@/features/projects/useProjects';
 import { CompleteSprintModal } from '@/features/sprints/CompleteSprintModal';
 import { SprintForm } from '@/features/sprints/SprintForm';
+import { SprintReportModal } from '@/features/sprints/SprintReportModal';
 import { SprintSidebar, type SprintFilter } from '@/features/sprints/SprintSidebar';
-import { useCreateSprint, useDeleteSprint, useSprints } from '@/features/sprints/useSprints';
+import { useCreateSprint, useDeleteSprint, useSprints, useUpdateSprint } from '@/features/sprints/useSprints';
 import { useGithubRepos, useGithubStatus } from '@/features/integrations/useGithub';
 import { useMembers } from '@/features/workspaces/useMembers';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
@@ -47,6 +48,8 @@ export function TasksPage() {
   const [sprintFilter, setSprintFilter] = useState<SprintFilter>(undefined);
   const [sprintFormOpen, setSprintFormOpen] = useState(false);
   const [completingSprint, setCompletingSprint] = useState<Sprint | null>(null);
+  const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
+  const [reportSprint, setReportSprint] = useState<Sprint | null>(null);
   // Memoised so the "now"-relative due ranges don't change the query key every render.
   const fieldQuery = useMemo(() => toQuery(filters), [filters]);
 
@@ -60,6 +63,7 @@ export function TasksPage() {
   const deleteProject = useDeleteProject();
   const { data: sprintList } = useSprints(workspaceId);
   const createSprint = useCreateSprint();
+  const updateSprint = useUpdateSprint();
   const deleteSprint = useDeleteSprint();
   const { data: githubStatus } = useGithubStatus();
   const githubConnected = githubStatus?.connected ?? false;
@@ -177,6 +181,20 @@ export function TasksPage() {
     });
   };
 
+  const handleEditSprint = (values: SprintCreateInput) => {
+    if (!editingSprint) return;
+    updateSprint.mutate(
+      { id: editingSprint.id, input: values },
+      {
+        onSuccess: (s) => {
+          toast.success(`Sprint "${s.name}" updated`);
+          setEditingSprint(null);
+        },
+        onError: (err) => toast.error(extractErrorMessage(err, 'Could not update sprint')),
+      },
+    );
+  };
+
   const handleDeleteSprint = (sprint: Sprint) => {
     if (!window.confirm(`Delete sprint "${sprint.name}"? Its tasks go back to the backlog.`)) return;
     deleteSprint.mutate(sprint.id, {
@@ -256,6 +274,8 @@ export function TasksPage() {
             value={sprintFilter}
             onChange={setSprintFilter}
             onNew={() => setSprintFormOpen(true)}
+            onReport={setReportSprint}
+            onEdit={setEditingSprint}
             onComplete={setCompletingSprint}
             onDelete={handleDeleteSprint}
           />
@@ -443,11 +463,25 @@ export function TasksPage() {
         />
       </Modal>
 
+      <SprintReportModal sprint={reportSprint} onClose={() => setReportSprint(null)} />
+
       <CompleteSprintModal
         sprint={completingSprint}
         sprints={sprintList ?? []}
         onClose={() => setCompletingSprint(null)}
       />
+
+      <Modal open={editingSprint !== null} onClose={() => setEditingSprint(null)} title="Edit sprint">
+        {editingSprint && (
+          <SprintForm
+            key={editingSprint.id}
+            initial={editingSprint}
+            onSubmit={handleEditSprint}
+            onCancel={() => setEditingSprint(null)}
+            isSubmitting={updateSprint.isPending}
+          />
+        )}
+      </Modal>
 
       <Modal open={sprintFormOpen} onClose={() => setSprintFormOpen(false)} title="New sprint">
         <SprintForm

@@ -79,7 +79,10 @@ async def list_members(
 ) -> list[MemberOut]:
     await _require_workspace(session, current_user, workspace_id)
     members = await workspace_repo.list_members(session, workspace_id=workspace_id)
-    return [MemberOut(user_id=u.id, email=u.email, role=role) for u, role in members]
+    return [
+        MemberOut(user_id=u.id, email=u.email, full_name=u.full_name, role=role)
+        for u, role in members
+    ]
 
 
 @router.get("/{workspace_id}/capacity", response_model=list[CapacityOut])
@@ -94,6 +97,7 @@ async def workspace_capacity(
         CapacityOut(
             user_id=u.id,
             email=u.email,
+            full_name=u.full_name,
             role=role,
             open_task_count=cap.get(u.id, (0, 0))[0],
             estimated_minutes=cap.get(u.id, (0, 0))[1],
@@ -134,7 +138,7 @@ async def add_member(
     await workspace_repo.add_member(
         session, workspace_id=workspace_id, user_id=user.id, role=payload.role
     )
-    return MemberOut(user_id=user.id, email=user.email, role=payload.role)
+    return MemberOut(user_id=user.id, email=user.email, full_name=user.full_name, role=payload.role)
 
 
 @router.put("/{workspace_id}/members/{user_id}", response_model=MemberOut)
@@ -160,7 +164,12 @@ async def update_member_role(
     await workspace_repo.update_member(session, member=member)
 
     user = await session.get(User, user_id)
-    return MemberOut(user_id=user_id, email=user.email if user else "", role=payload.role)
+    return MemberOut(
+        user_id=user_id,
+        email=user.email if user else "",
+        full_name=user.full_name if user else None,
+        role=payload.role,
+    )
 
 
 @router.delete(

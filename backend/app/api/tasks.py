@@ -143,7 +143,7 @@ async def list_tasks(
     max_minutes: int | None = Query(default=None, ge=1),
     search: str | None = None,
     sort: TaskSortField = "created_at",
-    order: SortOrder = "desc",
+    order: SortOrder = "asc",
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> TaskListResponse:
