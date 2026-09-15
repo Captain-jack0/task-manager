@@ -30,6 +30,15 @@ class TaskPriority(str, Enum):
     HIGH = "high"
 
 
+class Recurrence(str, Enum):
+    """How often a task comes back once it is closed."""
+
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+
+
 class TaskEnergy(str, Enum):
     """Mental effort a task needs — used by the 'What should I do now?' engine."""
 
@@ -108,6 +117,11 @@ class Task(Base, UUIDMixin, TimestampMixin):
     # Mental energy the task demands (null = unspecified).
     energy_level: Mapped[TaskEnergy | None] = mapped_column(
         SAEnum(TaskEnergy, name="task_energy", values_callable=lambda e: [m.value for m in e]),
+        nullable=True,
+    )
+    # Closing a task with a rule creates the next occurrence (see services/recurrence).
+    recurrence: Mapped[Recurrence | None] = mapped_column(
+        SAEnum(Recurrence, name="task_recurrence", values_callable=lambda e: [m.value for m in e]),
         nullable=True,
     )
     # How many times the task has been pushed to a later day (procrastination signal).

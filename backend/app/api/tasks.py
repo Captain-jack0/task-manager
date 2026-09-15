@@ -38,7 +38,7 @@ from app.schemas.task import (
     TaskSuggestion,
     TaskUpdate,
 )
-from app.services import github, notify, suggestions
+from app.services import github, notify, recurrence, suggestions
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -246,6 +246,7 @@ async def create_task(
         due_date=payload.due_date,
         estimated_minutes=payload.estimated_minutes,
         energy_level=payload.energy_level,
+        recurrence=payload.recurrence,
         project_id=payload.project_id,
         assignee_id=payload.assignee_id,
         sprint_id=payload.sprint_id,
@@ -317,6 +318,8 @@ async def update_task(
         setattr(task, key, value)
     if task.status != old_status:
         await task_link_repo.propagate_blocker_status(session, task)
+        if task.status == TaskStatus.CLOSED and task.recurrence is not None:
+            await recurrence.spawn_next(session, task)
 
     tags = None
     if payload.tag_ids is not None:
@@ -520,6 +523,8 @@ async def bulk_update_tasks(
             setattr(task, key, value)
         if task.status != old_status:
             await task_link_repo.propagate_blocker_status(session, task)
+            if task.status == TaskStatus.CLOSED and task.recurrence is not None:
+                await recurrence.spawn_next(session, task)
         if task.assignee_id != old_assignee:
             await notify.task_assigned(session, background, task=task, actor=current_user)
         if new_tags:

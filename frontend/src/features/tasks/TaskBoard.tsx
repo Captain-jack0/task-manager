@@ -11,7 +11,7 @@ import { checklistLabel } from '@/lib/markdown';
 import { scheduleIso, dateStrToIso } from '@/lib/schedule';
 import { formatDate } from '@/lib/date';
 import { useUpdateTask } from './useTasks';
-import { STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
+import { RECURRENCE_LABEL, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 
 const COLUMNS = STATUS_ORDER.map((status) => ({ status, label: STATUS_LABEL[status] }));
 
@@ -19,6 +19,7 @@ const boardMeta = (task: Task): string =>
   [
     task.estimated_minutes != null && `~${task.estimated_minutes}m`,
     task.energy_level && `${task.energy_level} energy`,
+    task.recurrence && `↻ ${RECURRENCE_LABEL[task.recurrence]}`,
     checklistLabel(task.description),
     task.subtask_total > 0 && `⤷ ${task.subtask_done}/${task.subtask_total}`,
     !isCompleted(task.status) && task.blocked_by.length > 0 && `⛔ blocked by ${task.blocked_by.length}`,

@@ -1,6 +1,7 @@
 export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done' | 'closed';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEnergy = 'low' | 'medium' | 'high';
+export type TaskRecurrence = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'guest';
 export type TaskSortField =
   | 'created_at'
@@ -156,6 +157,7 @@ export interface Task {
   due_date: string | null;
   estimated_minutes: number | null;
   energy_level: TaskEnergy | null;
+  recurrence: TaskRecurrence | null;
   project_id: string | null;
   assignee_id: string | null;
   sprint_id: string | null;
@@ -241,6 +243,7 @@ export interface TaskCreateInput {
   due_date?: string | null;
   estimated_minutes?: number | null;
   energy_level?: TaskEnergy | null;
+  recurrence?: TaskRecurrence | null;
   project_id?: string | null;
   assignee_id?: string | null;
   sprint_id?: string | null;

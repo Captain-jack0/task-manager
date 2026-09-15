@@ -7,7 +7,7 @@ import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
 import { checklistLabel, stripMarkdown } from '@/lib/markdown';
 import { scheduleIso, dateStrToIso } from '@/lib/schedule';
-import { NEXT_STATUS, STATUS_LABEL, isCompleted } from './status';
+import { NEXT_STATUS, RECURRENCE_LABEL, STATUS_LABEL, isCompleted } from './status';
 
 const PRIORITY_DOT: Record<Task['priority'], string> = {
   low: 'bg-slate-400',
@@ -145,6 +145,7 @@ export function TaskCard({
 
       {(task.estimated_minutes != null ||
         task.energy_level ||
+        task.recurrence ||
         task.snooze_count > 0 ||
         checklist ||
         task.subtask_total > 0 ||
@@ -164,6 +165,7 @@ export function TaskCard({
             </span>
           )}
           {task.energy_level && <span className="capitalize">{task.energy_level} energy</span>}
+          {task.recurrence && <span title="Repeats">↻ {RECURRENCE_LABEL[task.recurrence]}</span>}
           {task.snooze_count > 0 && (
             <span
               title="Times postponed"
