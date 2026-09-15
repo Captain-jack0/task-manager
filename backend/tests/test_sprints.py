@@ -124,3 +124,33 @@ async def test_close_sprint_carries_over_unfinished_and_keeps_closed(
     to_backlog = await client.post(f"/sprints/{s2}/close", json={}, headers=auth_headers)
     assert to_backlog.status_code == 200 and to_backlog.json()["moved"] == 3
     assert (await client.get(f"/tasks/{todo}", headers=auth_headers)).json()["sprint_id"] is None
+
+
+async def test_sprint_report_and_carried_over(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    sid = (await client.post("/sprints", json=SPRINT, headers=auth_headers)).json()["id"]
+    for title, status, minutes in (
+        ("a", "todo", 30),
+        ("b", "todo", 60),
+        ("c", "done", 120),
+        ("d", "closed", 10),
+    ):
+        r = await client.post(
+            "/tasks",
+            json={"title": title, "status": status, "estimated_minutes": minutes, "sprint_id": sid},
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, r.text
+
+    rep = (await client.get(f"/sprints/{sid}/report", headers=auth_headers)).json()
+    assert rep["by_status"] == {"todo": 2, "in_progress": 0, "blocked": 0, "done": 1, "closed": 1}
+    assert (rep["total"], rep["finished"]) == (4, 2)
+    assert (rep["estimated_minutes"], rep["estimated_minutes_finished"]) == (220, 130)
+    assert rep["sprint"]["carried_over"] == 0
+
+    closed = await client.post(f"/sprints/{sid}/close", json={}, headers=auth_headers)
+    assert closed.status_code == 200 and closed.json()["sprint"]["carried_over"] == 3
+    after = (await client.get(f"/sprints/{sid}/report", headers=auth_headers)).json()
+    assert after["total"] == 1 and after["by_status"]["closed"] == 1
+    assert after["sprint"]["carried_over"] == 3

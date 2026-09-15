@@ -12,6 +12,8 @@ interface Props {
   value: SprintFilter;
   onChange: (next: SprintFilter) => void;
   onNew: () => void;
+  onReport: (sprint: Sprint) => void;
+  onEdit: (sprint: Sprint) => void;
   onComplete: (sprint: Sprint) => void;
   onDelete: (sprint: Sprint) => void;
 }
@@ -35,17 +37,22 @@ function SprintRow({
   sprint,
   selected,
   onSelect,
+  onReport,
+  onEdit,
   onComplete,
   onDelete,
 }: {
   sprint: Sprint;
   selected: boolean;
   onSelect: () => void;
+  onReport: () => void;
+  onEdit?: () => void;
   onComplete?: () => void;
   onDelete: () => void;
 }) {
   const active = isActiveSprint(sprint);
   const overdue = isOverdueSprint(sprint);
+  const pct = sprint.task_count > 0 ? Math.round((sprint.done_count / sprint.task_count) * 100) : 0;
   return (
     <div
       className={cn(
@@ -73,7 +80,35 @@ function SprintRow({
           {formatDay(sprint.start_date)} – {formatDay(sprint.end_date)}
           {overdue && <span className="ml-1 font-medium text-amber-600 dark:text-amber-400">· ended</span>}
         </span>
+        {sprint.task_count > 0 && (
+          <span
+            className="mt-1 block h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+            title={`${pct}% finished`}
+          >
+            <span className="block h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+          </span>
+        )}
       </button>
+      <button
+        type="button"
+        onClick={onReport}
+        aria-label={`Summary of ${sprint.name}`}
+        title="Sprint summary"
+        className={cn(ICON_BUTTON, 'hover:text-slate-700 dark:hover:text-slate-200')}
+      >
+        ▤
+      </button>
+      {onEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`Edit ${sprint.name}`}
+          title="Edit sprint"
+          className={cn(ICON_BUTTON, 'hover:text-slate-700 dark:hover:text-slate-200')}
+        >
+          ✎
+        </button>
+      )}
       {onComplete && (
         <button
           type="button"
@@ -97,7 +132,16 @@ function SprintRow({
   );
 }
 
-export function SprintSidebar({ sprints, value, onChange, onNew, onComplete, onDelete }: Props) {
+export function SprintSidebar({
+  sprints,
+  value,
+  onChange,
+  onNew,
+  onReport,
+  onEdit,
+  onComplete,
+  onDelete,
+}: Props) {
   const [showClosed, setShowClosed] = useState(false);
   const open = sprints.filter(isOpenSprint);
   const closed = sprints.filter((s) => !isOpenSprint(s));
@@ -134,6 +178,8 @@ export function SprintSidebar({ sprints, value, onChange, onNew, onComplete, onD
             sprint={s}
             selected={value === s.id}
             onSelect={() => select(s.id)}
+            onReport={() => onReport(s)}
+            onEdit={() => onEdit(s)}
             onComplete={() => onComplete(s)}
             onDelete={() => onDelete(s)}
           />
@@ -157,6 +203,7 @@ export function SprintSidebar({ sprints, value, onChange, onNew, onComplete, onD
                   sprint={s}
                   selected={value === s.id}
                   onSelect={() => select(s.id)}
+                  onReport={() => onReport(s)}
                   onDelete={() => onDelete(s)}
                 />
               ))}

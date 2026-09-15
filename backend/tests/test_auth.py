@@ -175,3 +175,47 @@ async def test_reset_with_garbage_token_rejected(client: AsyncClient) -> None:
 async def test_reset_short_password_rejected(client: AsyncClient) -> None:
     resp = await client.post("/auth/reset-password", json={"token": "x", "password": "short"})
     assert resp.status_code == 422
+
+
+async def test_register_with_name_and_profile_settings(client: AsyncClient) -> None:
+    reg = await client.post(
+        "/auth/register",
+        json={"email": "named@example.com", "password": "password123", "full_name": "  Ada Lovelace "},
+    )
+    assert reg.status_code == 201, reg.text
+    assert reg.json()["user"]["full_name"] == "Ada Lovelace"
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+
+    renamed = await client.patch("/auth/me", json={"full_name": "Ada L."}, headers=headers)
+    assert renamed.status_code == 200 and renamed.json()["full_name"] == "Ada L."
+    cleared = await client.patch("/auth/me", json={"full_name": "   "}, headers=headers)
+    assert cleared.json()["full_name"] is None
+    assert (await client.get("/auth/me", headers=headers)).json()["full_name"] is None
+
+    wrong = await client.post(
+        "/auth/change-password",
+        json={"current_password": "nope12345", "new_password": "newpassword1"},
+        headers=headers,
+    )
+    assert wrong.status_code == 400
+    ok = await client.post(
+        "/auth/change-password",
+        json={"current_password": "password123", "new_password": "newpassword1"},
+        headers=headers,
+    )
+    assert ok.status_code == 200
+    old = await client.post(
+        "/auth/login", json={"email": "named@example.com", "password": "password123"}
+    )
+    assert old.status_code == 401
+    new = await client.post(
+        "/auth/login", json={"email": "named@example.com", "password": "newpassword1"}
+    )
+    assert new.status_code == 200
+
+
+async def test_register_without_name_still_works(client: AsyncClient) -> None:
+    reg = await client.post(
+        "/auth/register", json={"email": "anon@example.com", "password": "password123"}
+    )
+    assert reg.status_code == 201 and reg.json()["user"]["full_name"] is None
