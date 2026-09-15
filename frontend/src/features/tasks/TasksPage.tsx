@@ -34,9 +34,13 @@ import { STATUS_LABEL, STATUS_ORDER } from './status';
 import { DEFAULT_TASK_FILTERS, hasActiveFilters, toQuery, type TaskFilterState } from './taskFilters';
 import { useBulkDelete, useBulkUpdate, useCreateTask, useTasks, useUpdateTask } from './useTasks';
 
+// "All" hides the archive (closed tasks); the Closed entry is where they live.
 const STATUS_OPTIONS: { value: TaskStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All' },
-  ...STATUS_ORDER.map((value) => ({ value, label: STATUS_LABEL[value] })),
+  { value: 'all', label: 'All open' },
+  ...STATUS_ORDER.map((value) => ({
+    value,
+    label: value === 'closed' ? 'Archive (Closed)' : STATUS_LABEL[value],
+  })),
 ];
 
 export function TasksPage() {
@@ -83,6 +87,8 @@ export function TasksPage() {
     workspace_id: workspaceId,
     // The board shows every status as a column, so it ignores the status filter.
     status: view === 'board' || statusFilter === 'all' ? undefined : statusFilter,
+    // The list's "All open" keeps closed tasks out of the way; the board still shows its Closed column.
+    archived: view === 'list' && statusFilter === 'all' ? false : undefined,
     tag_id: tagFilter,
     project_id: projectFilter,
     search: search || undefined,
