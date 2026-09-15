@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.access import require_task, resolve_workspace
@@ -23,8 +23,11 @@ from app.repositories import (
     workspace_repo,
 )
 from app.schemas.task import (
+    BulkResult,
     SortOrder,
     SuggestResponse,
+    TaskBulkIds,
+    TaskBulkUpdate,
     TaskCreate,
     TaskLinkCreate,
     TaskListResponse,
@@ -34,7 +37,7 @@ from app.schemas.task import (
     TaskSuggestion,
     TaskUpdate,
 )
-from app.services import github, suggestions
+from app.services import github, notify, suggestions
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -135,6 +138,7 @@ async def list_tasks(
     unassigned: bool = False,
     sprint_id: UUID | None = None,
     backlog: bool = False,
+    archived: bool | None = None,
     priority: TaskPriority | None = None,
     energy: TaskEnergy | None = None,
     due_before: datetime | None = None,
@@ -143,7 +147,7 @@ async def list_tasks(
     max_minutes: int | None = Query(default=None, ge=1),
     search: str | None = None,
     sort: TaskSortField = "created_at",
-    order: SortOrder = "desc",
+    order: SortOrder = "asc",
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> TaskListResponse:
@@ -158,6 +162,7 @@ async def list_tasks(
         unassigned=unassigned,
         sprint_id=sprint_id,
         backlog=backlog,
+        archived=archived,
         priority=priority,
         energy=energy,
         due_before=due_before,
@@ -183,6 +188,7 @@ async def create_task(
     payload: TaskCreate,
     current_user: CurrentUser,
     session: SessionDep,
+    background: BackgroundTasks,
     workspace_id: UUID | None = None,
 ) -> TaskOut:
     ws_id = await resolve_workspace(session, current_user, workspace_id, write=True)
@@ -205,6 +211,8 @@ async def create_task(
         sprint_id=payload.sprint_id,
     )
     created = await task_repo.create_task(session, task=task, tags=tags)
+    await notify.task_assigned(session, background, task=created, actor=current_user)
+    await session.commit()
     return await _out(session, created)
 
 
@@ -247,8 +255,10 @@ async def update_task(
     payload: TaskUpdate,
     current_user: CurrentUser,
     session: SessionDep,
+    background: BackgroundTasks,
 ) -> TaskOut:
     task = await _require_task(session, current_user, task_id, write=True)
+    old_assignee = task.assignee_id
 
     update_data = payload.model_dump(exclude_unset=True, exclude={"tag_ids"})
     if "project_id" in update_data:
@@ -270,6 +280,9 @@ async def update_task(
         )
 
     updated = await task_repo.update_task(session, task=task, tags=tags)
+    if updated.assignee_id != old_assignee:
+        await notify.task_assigned(session, background, task=updated, actor=current_user)
+        await session.commit()
     return await _out(session, updated)
 
 
@@ -430,3 +443,62 @@ async def remove_link(
         if target is not None:
             await task_link_repo.release_if_unblocked(session, target)
     await session.commit()
+
+
+@router.post("/bulk", response_model=BulkResult)
+async def bulk_update_tasks(
+    payload: TaskBulkUpdate,
+    current_user: CurrentUser,
+    session: SessionDep,
+    background: BackgroundTasks,
+) -> BulkResult:
+    """Apply the same change to many tasks in one transaction. Any task the
+    caller cannot edit aborts the whole request (404), nothing is committed."""
+    changes = payload.model_dump(exclude_unset=True, exclude={"task_ids", "add_tag_ids"})
+    tasks = [
+        await _require_task(session, current_user, tid, write=True)
+        for tid in dict.fromkeys(payload.task_ids)
+    ]
+    new_tags = await _resolve_tags(
+        session, tag_ids=payload.add_tag_ids or [], user_id=current_user.id
+    )
+    for task in tasks:
+        if "project_id" in changes:
+            await _validate_project(session, changes["project_id"], task.workspace_id)
+        if "assignee_id" in changes:
+            await _validate_assignee(session, changes["assignee_id"], task.workspace_id)
+        if "sprint_id" in changes and changes["sprint_id"] != task.sprint_id:
+            await _validate_sprint(session, changes["sprint_id"], task.workspace_id)
+        old_status = task.status
+        old_assignee = task.assignee_id
+        for key, value in changes.items():
+            setattr(task, key, value)
+        if task.status != old_status:
+            await task_link_repo.propagate_blocker_status(session, task)
+        if task.assignee_id != old_assignee:
+            await notify.task_assigned(session, background, task=task, actor=current_user)
+        if new_tags:
+            have = {t.id for t in task.tags}
+            task.tags = [*task.tags, *[t for t in new_tags if t.id not in have]]
+    await session.commit()
+    return BulkResult(count=len(tasks))
+
+
+@router.post("/bulk-delete", response_model=BulkResult)
+async def bulk_delete_tasks(
+    payload: TaskBulkIds, current_user: CurrentUser, session: SessionDep
+) -> BulkResult:
+    ids = list(dict.fromkeys(payload.task_ids))
+    tasks = [await _require_task(session, current_user, tid, write=True) for tid in ids]
+    dependents: list[Task] = []
+    for task in tasks:
+        dependents.extend(await task_link_repo.dependents(session, blocker_id=task.id))
+    for task in tasks:
+        await session.delete(task)
+    await session.flush()
+    gone = set(ids)
+    for dependent in dependents:
+        if dependent.id not in gone:
+            await task_link_repo.release_if_unblocked(session, dependent)
+    await session.commit()
+    return BulkResult(count=len(tasks))

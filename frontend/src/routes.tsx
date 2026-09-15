@@ -9,6 +9,7 @@ import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { TasksPage } from '@/features/tasks/TasksPage';
 import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
 import { ReviewPage } from '@/features/review/ReviewPage';
+import { SettingsPage } from '@/features/settings/SettingsPage';
 
 export const router = createBrowserRouter([
   // Public marketing page — visitors land here, not on the login form.
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       { path: '/tasks', element: <TasksPage /> },
       { path: '/tasks/:id', element: <TaskDetailPage /> },
       { path: '/review', element: <ReviewPage /> },
+      { path: '/settings', element: <SettingsPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

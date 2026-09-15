@@ -9,15 +9,15 @@ from app.models.user import User
 
 async def list_by_task(
     session: AsyncSession, *, task_id: UUID
-) -> list[tuple[Comment, str]]:
-    """Comments on a task, oldest first, with each author's email."""
+) -> list[tuple[Comment, str, str | None]]:
+    """Comments on a task, oldest first, with each author's email and name."""
     result = await session.execute(
-        select(Comment, User.email)
+        select(Comment, User.email, User.full_name)
         .join(User, User.id == Comment.author_id)
         .where(Comment.task_id == task_id)
         .order_by(Comment.created_at.asc())
     )
-    return [(comment, email) for comment, email in result.all()]
+    return [(comment, email, name) for comment, email, name in result.all()]
 
 
 async def get(session: AsyncSession, *, comment_id: UUID) -> Comment | None:
