@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.task import Recurrence, Task, TaskStatus
+from app.repositories import activity_repo
 
 
 def next_due(base: datetime, rule: Recurrence) -> datetime:
@@ -45,4 +46,6 @@ async def spawn_next(session: AsyncSession, closed: Task) -> Task:
     )
     nxt.tags = list(closed.tags)
     session.add(nxt)
+    await session.flush()
+    await activity_repo.record(session, task_id=nxt.id, actor_id=None, field="created", new_value="recurrence")
     return nxt

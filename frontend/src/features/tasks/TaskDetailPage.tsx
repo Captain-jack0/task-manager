@@ -18,6 +18,7 @@ import { CommentsSection } from './CommentsSection';
 import { TaskForm } from './TaskForm';
 import { TaskLinksSection } from './TaskLinksSection';
 import { SubtasksSection } from './SubtasksSection';
+import { ActivitySection } from './ActivitySection';
 import type { TaskFormValues } from './schemas';
 import { RECURRENCE_LABEL, STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 import {
@@ -250,6 +251,8 @@ export function TaskDetailPage() {
           <SubtasksSection task={task} />
 
           <TaskLinksSection task={task} />
+
+          <ActivitySection task={task} members={members ?? []} sprints={sprints ?? []} projects={projects ?? []} />
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
             <span className="text-xs font-medium text-slate-500">GitHub</span>

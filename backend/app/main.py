@@ -8,6 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api import (
+    activity,
     auth,
     calendar,
     comments,
@@ -69,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(integrations.router)
     app.include_router(calendar.router)
     app.include_router(notifications.router)
+    app.include_router(activity.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

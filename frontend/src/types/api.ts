@@ -205,6 +205,15 @@ export interface PasswordChangeInput {
   new_password: string;
 }
 
+export interface TaskEvent {
+  id: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  actor: { id: string; email: string; full_name: string | null } | null;
+  created_at: string;
+}
+
 export type NotificationKind = 'assigned' | 'comment' | 'mention';
 
 export interface Notification {

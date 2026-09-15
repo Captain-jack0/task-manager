@@ -14,6 +14,7 @@ from app.models.task import Task, TaskEnergy, TaskPriority, TaskStatus
 from app.models.task_link import LinkKind, TaskLink
 from app.models.user import User
 from app.repositories import (
+    activity_repo,
     integration_repo,
     project_repo,
     sprint_repo,
@@ -253,6 +254,7 @@ async def create_task(
         parent_id=payload.parent_id,
     )
     created = await task_repo.create_task(session, task=task, tags=tags)
+    await activity_repo.record(session, task_id=created.id, actor_id=current_user.id, field="created")
     await notify.task_assigned(session, background, task=created, actor=current_user)
     await session.commit()
     return await _out(session, created)
@@ -301,6 +303,7 @@ async def update_task(
 ) -> TaskOut:
     task = await _require_task(session, current_user, task_id, write=True)
     old_assignee = task.assignee_id
+    before = activity_repo.snapshot(task)
 
     update_data = payload.model_dump(exclude_unset=True, exclude={"tag_ids"})
     if "project_id" in update_data:
@@ -320,6 +323,7 @@ async def update_task(
         await task_link_repo.propagate_blocker_status(session, task)
         if task.status == TaskStatus.CLOSED and task.recurrence is not None:
             await recurrence.spawn_next(session, task)
+    await activity_repo.record_changes(session, task=task, before=before, actor_id=current_user.id)
 
     tags = None
     if payload.tag_ids is not None:
@@ -464,11 +468,30 @@ async def add_link(
         )
 
     session.add(TaskLink(source_id=source.id, target_id=target.id, kind=kind))
+    verb = "blocks" if kind == LinkKind.BLOCKS else "relates"
+    await activity_repo.record(
+        session, task_id=source.id, actor_id=current_user.id, field="link", new_value=f"{verb}:{target.title}"
+    )
+    await activity_repo.record(
+        session,
+        task_id=target.id,
+        actor_id=current_user.id,
+        field="link",
+        new_value=f"{'blocked by' if kind == LinkKind.BLOCKS else 'relates'}:{source.title}",
+    )
     if (
         kind == LinkKind.BLOCKS
         and source.status not in task_link_repo.FINISHED
         and target.status in task_link_repo.OPEN
     ):
+        await activity_repo.record(
+            session,
+            task_id=target.id,
+            actor_id=current_user.id,
+            field="status",
+            old_value=target.status,
+            new_value=TaskStatus.BLOCKED,
+        )
         target.status = TaskStatus.BLOCKED
     await session.commit()
     await session.refresh(task)
@@ -484,6 +507,15 @@ async def remove_link(
     if link is None or task.id not in (link.source_id, link.target_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
     target_id, kind = link.target_id, link.kind
+    other_id = link.source_id if link.source_id != task.id else link.target_id
+    other = await task_repo.get_task(session, task_id=other_id)
+    await activity_repo.record(
+        session,
+        task_id=task.id,
+        actor_id=current_user.id,
+        field="link",
+        old_value=f"{kind.value}:{other.title if other else ''}",
+    )
     await session.delete(link)
     await session.flush()
     if kind == LinkKind.BLOCKS:
@@ -519,6 +551,7 @@ async def bulk_update_tasks(
             await _validate_sprint(session, changes["sprint_id"], task.workspace_id)
         old_status = task.status
         old_assignee = task.assignee_id
+        before = activity_repo.snapshot(task)
         for key, value in changes.items():
             setattr(task, key, value)
         if task.status != old_status:
@@ -527,6 +560,7 @@ async def bulk_update_tasks(
                 await recurrence.spawn_next(session, task)
         if task.assignee_id != old_assignee:
             await notify.task_assigned(session, background, task=task, actor=current_user)
+        await activity_repo.record_changes(session, task=task, before=before, actor_id=current_user.id)
         if new_tags:
             have = {t.id for t in task.tags}
             task.tags = [*task.tags, *[t for t in new_tags if t.id not in have]]
