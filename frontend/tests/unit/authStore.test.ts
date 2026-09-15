@@ -4,6 +4,7 @@ import { useAuthStore } from '@/features/auth/authStore';
 const sampleUser = {
   id: '11111111-1111-1111-1111-111111111111',
   email: 'a@b.com',
+  full_name: null,
   created_at: '2026-01-01T00:00:00Z',
 };
 

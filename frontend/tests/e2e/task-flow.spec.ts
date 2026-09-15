@@ -5,12 +5,13 @@ test.describe('Task management end-to-end', () => {
     const email = `e2e-${Date.now()}@example.com`;
 
     await page.goto('/register');
+    await page.fill('input[name="full_name"]', 'E2E Tester');
     await page.fill('input[name="email"]', email);
     await page.fill('input[name="password"]', 'password123');
     await page.click('button[type="submit"]');
 
     await expect(page).toHaveURL(/\/tasks$/);
-    await expect(page.getByTestId('user-email')).toHaveText(email);
+    await expect(page.getByTestId('user-name')).toHaveText('E2E Tester');
 
     await page.click('button:has-text("+ New task")');
     await page.fill('input[name="title"]', 'Write E2E test');

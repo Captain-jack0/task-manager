@@ -47,6 +47,7 @@ async def list_tasks(
     unassigned: bool = False,
     sprint_id: UUID | None = None,
     backlog: bool = False,
+    archived: bool | None = None,
     priority: TaskPriority | None = None,
     energy: TaskEnergy | None = None,
     due_before: datetime | None = None,
@@ -55,7 +56,7 @@ async def list_tasks(
     max_minutes: int | None = None,
     search: str | None = None,
     sort: str = "created_at",
-    order: str = "desc",
+    order: str = "asc",
     page: int = 1,
     limit: int = 20,
 ) -> tuple[Sequence[Task], int]:
@@ -72,6 +73,11 @@ async def list_tasks(
         conditions.append(Task.sprint_id.is_(None))
     elif sprint_id is not None:
         conditions.append(Task.sprint_id == sprint_id)
+    # Closed tasks are the archive: hidden from the default list, browsable on their own.
+    if archived is True:
+        conditions.append(Task.status == TaskStatus.CLOSED)
+    elif archived is False:
+        conditions.append(Task.status != TaskStatus.CLOSED)
     if priority is not None:
         conditions.append(Task.priority == priority)
     if energy is not None:
