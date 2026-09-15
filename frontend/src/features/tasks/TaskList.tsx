@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { extractErrorMessage } from '@/api/client';
+import { displayName } from '@/lib/people';
 import type { Member, Project, Sprint, Task, TaskStatus } from '@/types/api';
 import { useDeleteTask, useSnooze, useUpdateTask } from './useTasks';
 import { TaskCard } from './TaskCard';
@@ -9,14 +10,16 @@ interface Props {
   projects: Project[];
   members: Member[];
   sprints?: Sprint[];
+  selected?: Set<string>;
+  onToggleSelect?: (id: string, checked: boolean) => void;
 }
 
-export function TaskList({ tasks, projects, members, sprints = [] }: Props) {
+export function TaskList({ tasks, projects, members, sprints = [], selected, onToggleSelect }: Props) {
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
   const snoozeMutation = useSnooze();
   const projectById = new Map(projects.map((p) => [p.id, p]));
-  const emailById = new Map(members.map((m) => [m.user_id, m.email]));
+  const nameById = new Map(members.map((m) => [m.user_id, displayName(m)]));
 
   const handleStatus = (id: string, next: TaskStatus) => {
     updateMutation.mutate(
@@ -71,8 +74,10 @@ export function TaskList({ tasks, projects, members, sprints = [] }: Props) {
             task={task}
             projectName={project?.name}
             projectColor={project?.color}
-            assigneeEmail={task.assignee_id ? emailById.get(task.assignee_id) : undefined}
+            assigneeName={task.assignee_id ? nameById.get(task.assignee_id) : undefined}
             sprints={sprints}
+            selected={selected?.has(task.id) ?? false}
+            onSelect={onToggleSelect ? (checked) => onToggleSelect(task.id, checked) : undefined}
             onToggleStatus={(next) => handleStatus(task.id, next)}
             onMoveToSprint={(sprintId) => handleSprint(task.id, sprintId)}
             onSnooze={() => handleSnooze(task.id)}

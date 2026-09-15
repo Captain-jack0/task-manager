@@ -5,14 +5,15 @@ import { Input } from '@/components/Input';
 import { Modal } from '@/components/Modal';
 import { EmptyState } from '@/components/EmptyState';
 import { extractErrorMessage } from '@/api/client';
-import type { Sprint, SprintCreateInput, TaskStatus } from '@/types/api';
+import type { Sprint, SprintCreateInput, TaskBulkChanges, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { useTags, useDeleteTag } from '@/features/tags/useTags';
 import { useCreateProject, useDeleteProject, useProjects } from '@/features/projects/useProjects';
 import { CompleteSprintModal } from '@/features/sprints/CompleteSprintModal';
 import { SprintForm } from '@/features/sprints/SprintForm';
+import { SprintReportModal } from '@/features/sprints/SprintReportModal';
 import { SprintSidebar, type SprintFilter } from '@/features/sprints/SprintSidebar';
-import { useCreateSprint, useDeleteSprint, useSprints } from '@/features/sprints/useSprints';
+import { useCreateSprint, useDeleteSprint, useSprints, useUpdateSprint } from '@/features/sprints/useSprints';
 import { useGithubRepos, useGithubStatus } from '@/features/integrations/useGithub';
 import { useMembers } from '@/features/workspaces/useMembers';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
@@ -20,6 +21,7 @@ import { cn } from '@/lib/cn';
 import { QuickAdd } from './QuickAdd';
 import { StuckTasksNudge } from './StuckTasksNudge';
 import { SuggestPanel } from './SuggestPanel';
+import { BulkActionBar } from './BulkActionBar';
 import { TaskBoard } from './TaskBoard';
 import { TaskFilterBar } from './TaskFilterBar';
 import { TaskForm } from './TaskForm';
@@ -27,7 +29,7 @@ import { TaskList } from './TaskList';
 import type { TaskFormValues } from './schemas';
 import { STATUS_LABEL, STATUS_ORDER } from './status';
 import { DEFAULT_TASK_FILTERS, hasActiveFilters, toQuery, type TaskFilterState } from './taskFilters';
-import { useCreateTask, useTasks } from './useTasks';
+import { useBulkDelete, useBulkUpdate, useCreateTask, useTasks } from './useTasks';
 
 const STATUS_OPTIONS: { value: TaskStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -47,6 +49,9 @@ export function TasksPage() {
   const [sprintFilter, setSprintFilter] = useState<SprintFilter>(undefined);
   const [sprintFormOpen, setSprintFormOpen] = useState(false);
   const [completingSprint, setCompletingSprint] = useState<Sprint | null>(null);
+  const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
+  const [reportSprint, setReportSprint] = useState<Sprint | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // Memoised so the "now"-relative due ranges don't change the query key every render.
   const fieldQuery = useMemo(() => toQuery(filters), [filters]);
 
@@ -60,6 +65,7 @@ export function TasksPage() {
   const deleteProject = useDeleteProject();
   const { data: sprintList } = useSprints(workspaceId);
   const createSprint = useCreateSprint();
+  const updateSprint = useUpdateSprint();
   const deleteSprint = useDeleteSprint();
   const { data: githubStatus } = useGithubStatus();
   const githubConnected = githubStatus?.connected ?? false;
@@ -79,6 +85,8 @@ export function TasksPage() {
     limit: 100,
   });
   const createTask = useCreateTask();
+  const bulkUpdate = useBulkUpdate();
+  const bulkDelete = useBulkDelete();
 
   const handleCreate = (values: TaskFormValues) => {
     createTask.mutate(
@@ -177,6 +185,20 @@ export function TasksPage() {
     });
   };
 
+  const handleEditSprint = (values: SprintCreateInput) => {
+    if (!editingSprint) return;
+    updateSprint.mutate(
+      { id: editingSprint.id, input: values },
+      {
+        onSuccess: (s) => {
+          toast.success(`Sprint "${s.name}" updated`);
+          setEditingSprint(null);
+        },
+        onError: (err) => toast.error(extractErrorMessage(err, 'Could not update sprint')),
+      },
+    );
+  };
+
   const handleDeleteSprint = (sprint: Sprint) => {
     if (!window.confirm(`Delete sprint "${sprint.name}"? Its tasks go back to the backlog.`)) return;
     deleteSprint.mutate(sprint.id, {
@@ -199,6 +221,36 @@ export function TasksPage() {
   const toggleAllRepos = () =>
     setSelectedRepos(allReposSelected ? new Set() : new Set(importableRepos.map((r) => r.name)));
   const tasks = tasksQuery.data?.data ?? [];
+  // Selection only counts tasks that are still on screen (filters may have moved others out).
+  const selectedVisible = tasks.filter((t) => selectedIds.has(t.id)).map((t) => t.id);
+  const allVisibleSelected = tasks.length > 0 && selectedVisible.length === tasks.length;
+  const toggleSelect = (id: string, checked: boolean) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  const toggleSelectAll = () =>
+    setSelectedIds(allVisibleSelected ? new Set() : new Set(tasks.map((t) => t.id)));
+  const applyBulk = (changes: TaskBulkChanges) =>
+    bulkUpdate.mutate(
+      { ids: selectedVisible, changes },
+      {
+        onSuccess: (r) => toast.success(`Updated ${r.count} task${r.count === 1 ? '' : 's'}`),
+        onError: (err) => toast.error(extractErrorMessage(err, 'Bulk update failed')),
+      },
+    );
+  const deleteBulk = () => {
+    if (!window.confirm(`Delete ${selectedVisible.length} task${selectedVisible.length === 1 ? '' : 's'}?`)) return;
+    bulkDelete.mutate(selectedVisible, {
+      onSuccess: (r) => {
+        toast.success(`Deleted ${r.count} task${r.count === 1 ? '' : 's'}`);
+        setSelectedIds(new Set());
+      },
+      onError: (err) => toast.error(extractErrorMessage(err, 'Bulk delete failed')),
+    });
+  };
   const filtersActive =
     Boolean(search || tagFilter || projectFilter) ||
     statusFilter !== 'all' ||
@@ -256,6 +308,8 @@ export function TasksPage() {
             value={sprintFilter}
             onChange={setSprintFilter}
             onNew={() => setSprintFormOpen(true)}
+            onReport={setReportSprint}
+            onEdit={setEditingSprint}
             onComplete={setCompletingSprint}
             onDelete={handleDeleteSprint}
           />
@@ -388,6 +442,18 @@ export function TasksPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full max-w-xs"
             />
+            {view === 'list' && tasks.length > 0 && (
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleSelectAll}
+                  aria-label="Select all visible tasks"
+                  className="accent-slate-900 dark:accent-white"
+                />
+                Select all
+              </label>
+            )}
             <div className="flex gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-800">
               {(['list', 'board'] as const).map((v) => (
                 <button
@@ -430,7 +496,28 @@ export function TasksPage() {
           ) : view === 'board' ? (
             <TaskBoard tasks={tasks} projects={projects} members={members} sprints={sprintList ?? []} />
           ) : (
-            <TaskList tasks={tasks} projects={projects} members={members} sprints={sprintList ?? []} />
+            <TaskList
+              tasks={tasks}
+              projects={projects}
+              members={members}
+              sprints={sprintList ?? []}
+              selected={selectedIds}
+              onToggleSelect={toggleSelect}
+            />
+          )}
+
+          {view === 'list' && selectedVisible.length > 0 && (
+            <BulkActionBar
+              count={selectedVisible.length}
+              sprints={sprintList ?? []}
+              projects={projects}
+              members={members}
+              tags={tagList ?? []}
+              pending={bulkUpdate.isPending || bulkDelete.isPending}
+              onApply={applyBulk}
+              onDelete={deleteBulk}
+              onClear={() => setSelectedIds(new Set())}
+            />
           )}
         </section>
       </div>
@@ -443,11 +530,25 @@ export function TasksPage() {
         />
       </Modal>
 
+      <SprintReportModal sprint={reportSprint} onClose={() => setReportSprint(null)} />
+
       <CompleteSprintModal
         sprint={completingSprint}
         sprints={sprintList ?? []}
         onClose={() => setCompletingSprint(null)}
       />
+
+      <Modal open={editingSprint !== null} onClose={() => setEditingSprint(null)} title="Edit sprint">
+        {editingSprint && (
+          <SprintForm
+            key={editingSprint.id}
+            initial={editingSprint}
+            onSubmit={handleEditSprint}
+            onCancel={() => setEditingSprint(null)}
+            isSubmitting={updateSprint.isPending}
+          />
+        )}
+      </Modal>
 
       <Modal open={sprintFormOpen} onClose={() => setSprintFormOpen(false)} title="New sprint">
         <SprintForm

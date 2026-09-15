@@ -13,6 +13,7 @@ from app.schemas.sprint import (
     SprintCloseResult,
     SprintCreate,
     SprintOut,
+    SprintReport,
     SprintUpdate,
 )
 
@@ -126,3 +127,20 @@ async def delete_sprint(
 ) -> None:
     sprint = await _require_sprint(session, current_user, sprint_id, write=True)
     await sprint_repo.delete(session, sprint=sprint)
+
+
+@router.get("/{sprint_id}/report", response_model=SprintReport)
+async def sprint_report(
+    sprint_id: UUID, current_user: CurrentUser, session: SessionDep
+) -> SprintReport:
+    sprint = await _require_sprint(session, current_user, sprint_id)
+    counts = await sprint_repo.task_counts(session, workspace_id=sprint.workspace_id)
+    data = await sprint_repo.report(session, sprint=sprint)
+    return SprintReport(
+        sprint=_out(sprint, counts),
+        by_status=data.by_status,
+        total=data.total,
+        finished=data.finished,
+        estimated_minutes=data.estimated_minutes,
+        estimated_minutes_finished=data.estimated_minutes_finished,
+    )

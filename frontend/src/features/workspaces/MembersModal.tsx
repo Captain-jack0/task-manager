@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { displayName } from '@/lib/people';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
@@ -68,7 +69,10 @@ export function MembersModal({ workspace, open, onClose }: Props) {
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {(members ?? []).map((m) => (
               <li key={m.user_id} className="flex items-center justify-between gap-2 py-2">
-                <span className="min-w-0 truncate text-sm">{m.email}</span>
+                <span className="min-w-0 truncate text-sm">
+                  {displayName(m)}
+                  {m.full_name && <span className="ml-1.5 text-xs text-slate-400">{m.email}</span>}
+                </span>
                 <div className="flex shrink-0 items-center gap-2">
                   {canManage && m.role !== 'owner' ? (
                     <select
@@ -151,7 +155,7 @@ export function MembersModal({ workspace, open, onClose }: Props) {
                 <div key={c.user_id}>
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">
-                      {c.email}
+                      {displayName(c)}
                     </span>
                     <span className="shrink-0 text-slate-400">
                       {c.open_task_count} open · {formatLoad(c.estimated_minutes)}
