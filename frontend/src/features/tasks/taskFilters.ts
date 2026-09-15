@@ -1,6 +1,7 @@
 import type { TaskEnergy, TaskListFilters, TaskPriority, TaskSortField } from '@/types/api';
 
-/** Filter/sort controls state — every value is a plain string so it can drive a <select>. */
+/** Filter/sort controls state — every value is a plain string so it can drive a <select>.
+ * Default order is oldest first, so an imported plan reads top to bottom (P01, P02, …). */
 export interface TaskFilterState {
   priority: TaskPriority | '';
   energy: TaskEnergy | '';
@@ -19,7 +20,7 @@ export const DEFAULT_TASK_FILTERS: TaskFilterState = {
   due: '',
   maxMinutes: '',
   sort: 'created_at',
-  order: 'desc',
+  order: 'asc',
 };
 
 export const SORT_OPTIONS: { value: TaskSortField; label: string }[] = [

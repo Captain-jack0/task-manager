@@ -21,5 +21,6 @@ class CommentOut(BaseModel):
     task_id: UUID
     author_id: UUID
     author_email: str
+    author_name: str | None = None
     body: str
     created_at: datetime
