@@ -49,6 +49,7 @@ class SprintOut(BaseModel):
     start_date: date
     end_date: date
     closed_at: datetime | None = None
+    carried_over: int = 0
     # Progress, filled in by the list endpoint.
     task_count: int = 0
     done_count: int = 0
@@ -60,3 +61,19 @@ class SprintCloseResult(BaseModel):
     # Unfinished tasks carried over / closed tasks kept as history.
     moved: int
     kept: int
+
+
+class BurndownPoint(BaseModel):
+    day: date
+    remaining: int | None = None
+    ideal: float
+
+
+class SprintReport(BaseModel):
+    sprint: SprintOut
+    by_status: dict[str, int]
+    total: int
+    finished: int
+    estimated_minutes: int
+    estimated_minutes_finished: int
+    burndown: list[BurndownPoint]

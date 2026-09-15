@@ -1,5 +1,11 @@
 import { apiClient } from './client';
-import type { Sprint, SprintCloseResult, SprintCreateInput, SprintUpdateInput } from '@/types/api';
+import type {
+  Sprint,
+  SprintCloseResult,
+  SprintCreateInput,
+  SprintReport,
+  SprintUpdateInput,
+} from '@/types/api';
 
 export const sprintsApi = {
   list: async (workspaceId?: string | null): Promise<Sprint[]> => {
@@ -23,6 +29,10 @@ export const sprintsApi = {
     const { data } = await apiClient.post<SprintCloseResult>(`/sprints/${id}/close`, {
       move_to: moveTo,
     });
+    return data;
+  },
+  report: async (id: string): Promise<SprintReport> => {
+    const { data } = await apiClient.get<SprintReport>(`/sprints/${id}/report`);
     return data;
   },
   remove: async (id: string): Promise<void> => {

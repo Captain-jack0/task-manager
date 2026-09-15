@@ -9,10 +9,12 @@ from app.models.sprint import Sprint
 from app.models.user import User
 from app.repositories import sprint_repo, workspace_repo
 from app.schemas.sprint import (
+    BurndownPoint,
     SprintClose,
     SprintCloseResult,
     SprintCreate,
     SprintOut,
+    SprintReport,
     SprintUpdate,
 )
 
@@ -115,14 +117,33 @@ async def close_sprint(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="move_to must be another open sprint in this workspace",
             )
-    moved, kept = await sprint_repo.close(session, sprint=sprint, move_to=payload.move_to)
+    moved, kept = await sprint_repo.close(
+        session, sprint=sprint, move_to=payload.move_to, actor_id=current_user.id
+    )
     counts = await sprint_repo.task_counts(session, workspace_id=sprint.workspace_id)
     return SprintCloseResult(sprint=_out(sprint, counts), moved=moved, kept=kept)
 
 
 @router.delete("/{sprint_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_sprint(
-    sprint_id: UUID, current_user: CurrentUser, session: SessionDep
-) -> None:
+async def delete_sprint(sprint_id: UUID, current_user: CurrentUser, session: SessionDep) -> None:
     sprint = await _require_sprint(session, current_user, sprint_id, write=True)
     await sprint_repo.delete(session, sprint=sprint)
+
+
+@router.get("/{sprint_id}/report", response_model=SprintReport)
+async def sprint_report(
+    sprint_id: UUID, current_user: CurrentUser, session: SessionDep
+) -> SprintReport:
+    sprint = await _require_sprint(session, current_user, sprint_id)
+    counts = await sprint_repo.task_counts(session, workspace_id=sprint.workspace_id)
+    data = await sprint_repo.report(session, sprint=sprint)
+    curve = await sprint_repo.burndown(session, sprint=sprint)
+    return SprintReport(
+        sprint=_out(sprint, counts),
+        by_status=data.by_status,
+        total=data.total,
+        finished=data.finished,
+        estimated_minutes=data.estimated_minutes,
+        estimated_minutes_finished=data.estimated_minutes_finished,
+        burndown=[BurndownPoint(day=p.day, remaining=p.remaining, ideal=p.ideal) for p in curve],
+    )

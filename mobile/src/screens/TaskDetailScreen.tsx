@@ -14,6 +14,12 @@ import {
   useSyncGithubIssue,
 } from '../features/integrations/useGithub';
 import { CommentsSection } from '../features/comments/CommentsSection';
+import { MarkdownText } from '../features/tasks/MarkdownText';
+import { toggleNthCheckbox } from '../features/tasks/markdown';
+import { isOpenSprint, useSprints } from '../features/sprints/useSprints';
+import { TimerButton } from '../features/time/TimerButton';
+import { formatDuration } from '../features/time/useTimer';
+import { displayName } from '../lib/people';
 import { useAuthStore } from '../store/authStore';
 import type { RootStackParamList } from '../navigation';
 import { colors, priorityColor, spacing } from '../theme';
@@ -47,6 +53,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   const { data: task, isLoading } = useTask(id);
   const { data: projects } = useProjects();
   const { data: members } = useMembers(task?.workspace_id);
+  const { data: sprints } = useSprints(task?.workspace_id);
   const user = useAuthStore((s) => s.user);
   const update = useUpdateTask();
   const snooze = useSnooze();
@@ -63,6 +70,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   const [estimate, setEstimate] = useState('');
   const [projectId, setProjectId] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  const [sprintId, setSprintId] = useState('');
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -77,11 +85,19 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   const memberList = members ?? [];
   const assigneeOptions = [
     { label: 'Unassigned', value: '' },
-    ...memberList.map((m: Member) => ({ label: m.email, value: m.user_id })),
+    ...memberList.map((m: Member) => ({ label: displayName(m), value: m.user_id })),
   ];
-  const assigneeEmail = task?.assignee_id
-    ? memberList.find((m: Member) => m.user_id === task.assignee_id)?.email
+  const assigneeMember = task?.assignee_id
+    ? memberList.find((m: Member) => m.user_id === task.assignee_id)
     : undefined;
+  const assigneeEmail = assigneeMember ? displayName(assigneeMember) : undefined;
+  const sprintOptions = [
+    { label: 'Backlog', value: '' },
+    ...(sprints ?? [])
+      .filter((s) => isOpenSprint(s) || s.id === task?.sprint_id)
+      .map((s) => ({ label: s.name, value: s.id })),
+  ];
+  const sprintName = task?.sprint_id ? (sprints ?? []).find((s) => s.id === task.sprint_id)?.name : undefined;
 
   if (isLoading || !task) {
     return (
@@ -99,6 +115,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
     setEstimate(task.estimated_minutes != null ? String(task.estimated_minutes) : '');
     setProjectId(task.project_id ?? '');
     setAssigneeId(task.assignee_id ?? '');
+    setSprintId(task.sprint_id ?? '');
     setDueDate(task.due_date ? new Date(task.due_date) : null);
     setErr(null);
     setEditing(true);
@@ -120,6 +137,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
         estimate.trim() === '' || Number.isNaN(n) ? null : Math.max(1, Math.round(n)),
       project_id: projectId === '' ? null : projectId,
       assignee_id: assigneeId === '' ? null : assigneeId,
+      sprint_id: sprintId === '' ? null : sprintId,
       due_date: dueDate ? dueDate.toISOString() : null,
     };
     try {
@@ -185,6 +203,13 @@ export function TaskDetailScreen({ route, navigation }: Props) {
           </View>
         )}
 
+        {sprintOptions.length > 1 && (
+          <View style={{ gap: 8 }}>
+            <Text style={styles.sectionLabel}>Sprint</Text>
+            <Segmented options={sprintOptions} value={sprintId} onChange={setSprintId} />
+          </View>
+        )}
+
         {err && <Text style={styles.error}>{err}</Text>}
 
         <View style={{ gap: 10, marginTop: 4 }}>
@@ -197,6 +222,14 @@ export function TaskDetailScreen({ route, navigation }: Props) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      {task.parent && (
+        <Text style={styles.muted}>
+          ↑ Part of{' '}
+          <Text style={styles.link} onPress={() => navigation.push('TaskDetail', { id: task.parent!.id })}>
+            {task.parent.title}
+          </Text>
+        </Text>
+      )}
       <View style={styles.titleRow}>
         <Text style={styles.title}>{task.title}</Text>
       </View>
@@ -214,13 +247,39 @@ export function TaskDetailScreen({ route, navigation }: Props) {
         {task.snooze_count > 0 && (
           <Badge label={`snoozed ${task.snooze_count}×`} color={colors.warnText} />
         )}
+        {sprintName && <Badge label={`⟳ ${sprintName}`} color={colors.primary} />}
+        {task.recurrence && <Badge label={`↻ ${task.recurrence}`} color={colors.muted} />}
+        {(task.subtask_total ?? 0) > 0 && (
+          <Badge label={`⤷ ${task.subtask_done ?? 0}/${task.subtask_total}`} color={colors.muted} />
+        )}
+        {(task.logged_minutes ?? 0) > 0 && (
+          <Badge label={`⏱ ${formatDuration(task.logged_minutes ?? 0)}`} color={colors.faint} />
+        )}
       </View>
 
+      {(task.blocked_by?.length ?? 0) > 0 && (
+        <View style={{ gap: 4 }}>
+          <Text style={styles.sectionLabel}>Blocked by</Text>
+          {task.blocked_by?.map((b) => (
+            <Text key={b.link_id} style={styles.link} onPress={() => navigation.push('TaskDetail', { id: b.id })}>
+              ⛔ {b.title} · {STATUS_LABEL[b.status]}
+            </Text>
+          ))}
+        </View>
+      )}
+
       {task.description ? (
-        <Text style={styles.description}>{task.description}</Text>
+        <MarkdownText
+          text={task.description}
+          onToggleCheckbox={(n, checked) =>
+            update.mutate({ id: task.id, input: { description: toggleNthCheckbox(task.description ?? '', n, checked) } })
+          }
+        />
       ) : (
         <Text style={styles.muted}>No description.</Text>
       )}
+
+      {task.status !== 'closed' && <TimerButton taskId={task.id} />}
 
       <View style={{ gap: 8 }}>
         <Text style={styles.sectionLabel}>Status</Text>
@@ -311,6 +370,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700', color: colors.text, flex: 1 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   description: { fontSize: 15, color: colors.text, lineHeight: 22 },
+  link: { fontSize: 14, color: colors.primary, fontWeight: '600' },
   muted: { fontSize: 14, color: colors.muted },
   sectionLabel: { fontSize: 13, fontWeight: '600', color: colors.muted },
   error: { color: colors.danger, fontSize: 13 },

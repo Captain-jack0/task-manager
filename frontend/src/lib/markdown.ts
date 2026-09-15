@@ -176,3 +176,45 @@ export function stripMarkdown(text: string): string {
     .replace(/\n{2,}/g, '\n')
     .trim();
 }
+
+/** Wrap the selection (or a placeholder) in a fenced code block on its own lines; the code stays selected. */
+export function insertFencedCode(text: string, { start, end }: Selection, lang = ''): EditResult {
+  const code = text.slice(start, end) || 'code';
+  const before = text.slice(0, start);
+  const after = text.slice(end);
+  const lead = before && !before.endsWith('\n') ? '\n' : '';
+  const trail = after && !after.startsWith('\n') ? '\n' : '';
+  const open = `${lead}\`\`\`${lang}\n`;
+  const inserted = `${open}${code}\n\`\`\`${trail}`;
+  return {
+    text: before + inserted + after,
+    start: start + open.length,
+    end: start + open.length + code.length,
+  };
+}
+
+const FENCE_LINE_RE = /^[ \t]*(`{3,}|~{3,})/;
+
+/**
+ * True when the caret sits strictly between an opening and a closing fence
+ * line. An unclosed fence does not count, so a stray ``` never hijacks Tab
+ * for the rest of the text; the fence lines themselves are "outside" too.
+ */
+export function insideFence(text: string, caret: number): boolean {
+  const lineStart = text.lastIndexOf('\n', caret - 1) + 1;
+  const lineEnd = text.indexOf('\n', caret);
+  const currentLine = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+  if (FENCE_LINE_RE.test(currentLine)) return false;
+  const isFence = (l: string) => FENCE_LINE_RE.test(l);
+  const openAbove = text.slice(0, lineStart).split('\n').filter(isFence).length % 2 === 1;
+  const closesBelow = text.slice(lineStart).split('\n').some(isFence);
+  return openAbove && closesBelow;
+}
+
+/** `[selection](url)` with `url` selected so it can be typed over straight away. */
+export function wrapLink(text: string, { start, end }: Selection): EditResult {
+  const label = text.slice(start, end) || 'text';
+  const inserted = `[${label}](url)`;
+  const urlStart = start + label.length + 3;
+  return { text: text.slice(0, start) + inserted + text.slice(end), start: urlStart, end: urlStart + 3 };
+}
