@@ -10,6 +10,11 @@ export const credentialsSchema = z.object({
 
 export type CredentialsForm = z.infer<typeof credentialsSchema>;
 
+export const registerSchema = credentialsSchema.extend({
+  full_name: z.string().trim().min(1, 'Your name is required').max(120, 'Name too long'),
+});
+export type RegisterForm = z.infer<typeof registerSchema>;
+
 export const emailSchema = credentialsSchema.pick({ email: true });
 export type EmailForm = z.infer<typeof emailSchema>;
 

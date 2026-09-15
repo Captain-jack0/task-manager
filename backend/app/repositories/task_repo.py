@@ -55,7 +55,7 @@ async def list_tasks(
     max_minutes: int | None = None,
     search: str | None = None,
     sort: str = "created_at",
-    order: str = "desc",
+    order: str = "asc",
     page: int = 1,
     limit: int = 20,
 ) -> tuple[Sequence[Task], int]:

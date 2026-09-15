@@ -15,6 +15,7 @@ export type TaskSortField =
 export interface User {
   id: string;
   email: string;
+  full_name: string | null;
   created_at: string;
 }
 
@@ -33,6 +34,7 @@ export interface WorkspaceCreateInput {
 export interface Member {
   user_id: string;
   email: string;
+  full_name: string | null;
   role: WorkspaceRole;
 }
 
@@ -44,6 +46,7 @@ export interface AddMemberInput {
 export interface Capacity {
   user_id: string;
   email: string;
+  full_name: string | null;
   role: WorkspaceRole;
   open_task_count: number;
   estimated_minutes: number;
@@ -62,6 +65,7 @@ export interface Comment {
   task_id: string;
   author_id: string;
   author_email: string;
+  author_name: string | null;
   body: string;
   created_at: string;
 }
@@ -167,6 +171,15 @@ export interface CalendarSubscription {
 export interface GithubConnectInput {
   token: string;
   repo: string;
+}
+
+export interface ProfileUpdateInput {
+  full_name: string | null;
+}
+
+export interface PasswordChangeInput {
+  current_password: string;
+  new_password: string;
 }
 
 export interface TokenResponse {

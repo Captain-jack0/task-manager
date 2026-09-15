@@ -8,6 +8,7 @@ import { TagPicker } from '@/features/tags/TagPicker';
 import { useProjects } from '@/features/projects/useProjects';
 import { useSprints } from '@/features/sprints/useSprints';
 import { useMembers } from '@/features/workspaces/useMembers';
+import { displayName } from '@/lib/people';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { taskFormSchema, type TaskFormValues } from './schemas';
 import { STATUS_LABEL, STATUS_ORDER } from './status';
@@ -158,7 +159,7 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
           <option value="">Unassigned</option>
           {(members ?? []).map((m) => (
             <option key={m.user_id} value={m.user_id}>
-              {m.email}
+              {displayName(m)}
             </option>
           ))}
         </select>

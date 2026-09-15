@@ -18,7 +18,7 @@ interface Props {
   task: Task;
   projectName?: string;
   projectColor?: string | null;
-  assigneeEmail?: string;
+  assigneeName?: string;
   sprints?: Sprint[];
   onToggleStatus: (next: TaskStatus) => void;
   onMoveToSprint?: (sprintId: string | null) => void;
@@ -31,7 +31,7 @@ export function TaskCard({
   task,
   projectName,
   projectColor,
-  assigneeEmail,
+  assigneeName,
   sprints = [],
   onToggleStatus,
   onMoveToSprint,
@@ -156,12 +156,12 @@ export function TaskCard({
         </div>
       )}
 
-      {assigneeEmail && (
+      {assigneeName && (
         <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-            {assigneeEmail[0]}
+            {assigneeName[0]}
           </span>
-          <span className="truncate">{assigneeEmail}</span>
+          <span className="truncate">{assigneeName}</span>
         </div>
       )}
 

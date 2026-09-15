@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { authApi, type AuthCredentials, type ResetPasswordInput } from '@/api/auth';
+import { authApi, type AuthCredentials, type RegisterInput, type ResetPasswordInput } from '@/api/auth';
+import type { PasswordChangeInput, ProfileUpdateInput } from '@/types/api';
 import { useAuthStore } from './authStore';
 
 export function useLogin() {
@@ -13,8 +14,26 @@ export function useLogin() {
 export function useRegister() {
   const setSession = useAuthStore((s) => s.setSession);
   return useMutation({
-    mutationFn: (creds: AuthCredentials) => authApi.register(creds),
+    mutationFn: (input: RegisterInput) => authApi.register(input),
     onSuccess: (data) => setSession(data.access_token, data.user),
+  });
+}
+
+export function useUpdateProfile() {
+  const setUser = useAuthStore((s) => s.setUser);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ProfileUpdateInput) => authApi.updateProfile(input),
+    onSuccess: (user) => {
+      setUser(user);
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+    },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (input: PasswordChangeInput) => authApi.changePassword(input),
   });
 }
 
