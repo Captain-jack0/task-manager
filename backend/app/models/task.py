@@ -64,6 +64,12 @@ class Task(Base, UUIDMixin, TimestampMixin):
         ForeignKey("projects.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Optional parent for subtasks (one level). Deleting the parent removes them.
+    parent_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=True,
+    )
     # Optional sprint (time-box) within the workspace; NULL = backlog. Deleting
     # a sprint sends its tasks back to the backlog (SET NULL).
     sprint_id: Mapped[UUID | None] = mapped_column(

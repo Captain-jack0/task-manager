@@ -31,6 +31,7 @@ class TaskBase(BaseModel):
     project_id: UUID | None = None
     assignee_id: UUID | None = None
     sprint_id: UUID | None = None
+    parent_id: UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -56,6 +57,7 @@ class TaskUpdate(BaseModel):
     project_id: UUID | None = None
     assignee_id: UUID | None = None
     sprint_id: UUID | None = None
+    parent_id: UUID | None = None
     tag_ids: list[UUID] | None = None
 
 
@@ -63,6 +65,12 @@ class TaskRef(BaseModel):
     """The other end of a task link, enough to render a chip."""
 
     link_id: UUID
+    id: UUID
+    title: str
+    status: TaskStatus
+
+
+class TaskParentRef(BaseModel):
     id: UUID
     title: str
     status: TaskStatus
@@ -87,8 +95,30 @@ class TaskOut(TaskBase):
     blocked_by: list[TaskRef] = Field(default_factory=list)
     blocks: list[TaskRef] = Field(default_factory=list)
     related: list[TaskRef] = Field(default_factory=list)
+    parent: TaskParentRef | None = None
+    subtask_total: int = 0
+    subtask_done: int = 0
     created_at: datetime
     updated_at: datetime
+
+
+class TaskBulkIds(BaseModel):
+    task_ids: list[UUID] = Field(min_length=1, max_length=200)
+
+
+class TaskBulkUpdate(TaskBulkIds):
+    """Fields left unset are untouched; `sprint_id: null` means the backlog."""
+
+    status: TaskStatus | None = None
+    priority: TaskPriority | None = None
+    sprint_id: UUID | None = None
+    project_id: UUID | None = None
+    assignee_id: UUID | None = None
+    add_tag_ids: list[UUID] | None = None
+
+
+class BulkResult(BaseModel):
+    count: int
 
 
 class TaskListResponse(BaseModel):

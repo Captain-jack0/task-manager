@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { Sprint, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
@@ -18,8 +19,12 @@ interface Props {
   task: Task;
   projectName?: string;
   projectColor?: string | null;
-  assigneeEmail?: string;
+  assigneeName?: string;
   sprints?: Sprint[];
+  selected?: boolean;
+  /** Keyboard highlight (j / k). */
+  focused?: boolean;
+  onSelect?: (checked: boolean) => void;
   onToggleStatus: (next: TaskStatus) => void;
   onMoveToSprint?: (sprintId: string | null) => void;
   onSnooze: () => void;
@@ -31,8 +36,11 @@ export function TaskCard({
   task,
   projectName,
   projectColor,
-  assigneeEmail,
+  assigneeName,
   sprints = [],
+  selected = false,
+  focused = false,
+  onSelect,
   onToggleStatus,
   onMoveToSprint,
   onSnooze,
@@ -43,20 +51,37 @@ export function TaskCard({
   const overdue = !done && isOverdue(task.due_date);
   const nextStatus = NEXT_STATUS[task.status];
   const checklist = checklistLabel(task.description);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focused) ref.current?.scrollIntoView({ block: 'nearest' });
+  }, [focused]);
 
   return (
     <div
+      ref={ref}
       className={cn(
         'group flex flex-col rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700',
         done && 'opacity-60',
+        selected && 'border-slate-400 ring-2 ring-slate-300 dark:border-slate-500 dark:ring-slate-600',
+        focused && 'border-slate-900 ring-2 ring-slate-900/30 dark:border-white dark:ring-white/30',
       )}
       data-testid="task-card"
+      data-focused={focused || undefined}
     >
       <div className="flex items-start justify-between gap-3">
+        {onSelect && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => onSelect(e.target.checked)}
+            aria-label={`Select ${task.title}`}
+            className="mt-1 shrink-0 cursor-pointer accent-slate-900 dark:accent-white"
+          />
+        )}
         <Link
           to={`/tasks/${task.id}`}
           className={cn(
-            'block text-sm font-semibold leading-snug tracking-tight hover:text-slate-500 dark:hover:text-slate-400',
+            'block min-w-0 flex-1 text-sm font-semibold leading-snug tracking-tight hover:text-slate-500 dark:hover:text-slate-400',
             done && 'line-through',
           )}
         >
@@ -122,10 +147,14 @@ export function TaskCard({
         task.energy_level ||
         task.snooze_count > 0 ||
         checklist ||
+        task.subtask_total > 0 ||
         task.blocked_by.length > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
           {task.estimated_minutes != null && <span>~{task.estimated_minutes}m</span>}
           {checklist && <span title="Checklist progress">{checklist}</span>}
+          {task.subtask_total > 0 && (
+            <span title="Subtasks done">⤷ {task.subtask_done}/{task.subtask_total}</span>
+          )}
           {!done && task.blocked_by.length > 0 && (
             <span
               title={`Blocked by: ${task.blocked_by.map((t) => t.title).join(', ')}`}
@@ -146,6 +175,12 @@ export function TaskCard({
         </div>
       )}
 
+      {task.parent && (
+        <p className="mt-2 truncate text-xs text-slate-400" title={`Subtask of ${task.parent.title}`}>
+          ↑ {task.parent.title}
+        </p>
+      )}
+
       {projectName && (
         <div className="mt-2.5 inline-flex w-fit items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           <span
@@ -156,12 +191,12 @@ export function TaskCard({
         </div>
       )}
 
-      {assigneeEmail && (
+      {assigneeName && (
         <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-            {assigneeEmail[0]}
+            {assigneeName[0]}
           </span>
-          <span className="truncate">{assigneeEmail}</span>
+          <span className="truncate">{assigneeName}</span>
         </div>
       )}
 

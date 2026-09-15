@@ -1,4 +1,5 @@
 import { Outlet, Link } from 'react-router-dom';
+import { displayName } from '@/lib/people';
 import { useEffect, useState } from 'react';
 import { Button } from './Button';
 import { useAuthStore } from '@/features/auth/authStore';
@@ -6,6 +7,7 @@ import { useLogout } from '@/features/auth/useAuth';
 import { WorkspaceSwitcher } from '@/features/workspaces/WorkspaceSwitcher';
 import { GithubSettings } from '@/features/integrations/GithubSettings';
 import { CalendarSubscribe } from '@/features/calendar/CalendarSubscribe';
+import { NotificationBell } from '@/features/notifications/NotificationBell';
 
 export function AppLayout() {
   const user = useAuthStore((s) => s.user);
@@ -38,6 +40,7 @@ export function AppLayout() {
             <WorkspaceSwitcher />
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <CalendarSubscribe />
             <GithubSettings />
             <button
@@ -49,12 +52,14 @@ export function AppLayout() {
               {dark ? '☀' : '☾'}
             </button>
             {user && (
-              <span
-                className="hidden text-sm text-slate-500 sm:inline dark:text-slate-400"
-                data-testid="user-email"
+              <Link
+                to="/settings"
+                title="Profile settings"
+                className="hidden max-w-[12rem] truncate text-sm text-slate-500 transition-colors hover:text-slate-900 sm:inline dark:text-slate-400 dark:hover:text-white"
+                data-testid="user-name"
               >
-                {user.email}
-              </span>
+                {displayName(user)}
+              </Link>
             )}
             <Button variant="secondary" size="sm" onClick={logout}>
               Sign out

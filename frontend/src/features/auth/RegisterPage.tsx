@@ -7,7 +7,7 @@ import { Input } from '@/components/Input';
 import { extractErrorMessage } from '@/api/client';
 import { AuthShell } from './AuthShell';
 import { useAuthStore } from './authStore';
-import { credentialsSchema, type CredentialsForm } from './schemas';
+import { registerSchema, type RegisterForm } from './schemas';
 import { useRegister } from './useAuth';
 
 export function RegisterPage() {
@@ -18,11 +18,11 @@ export function RegisterPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<CredentialsForm>({ resolver: zodResolver(credentialsSchema) });
+  } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
 
   if (token) return <Navigate to="/tasks" replace />;
 
-  const onSubmit = (values: CredentialsForm) => {
+  const onSubmit = (values: RegisterForm) => {
     registerMutation.mutate(values, {
       onSuccess: () => {
         toast.success('Account created');
@@ -35,6 +35,13 @@ export function RegisterPage() {
   return (
     <AuthShell title="Create account" subtitle="Free, no credit card required.">
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Input
+          label="Full name"
+          autoComplete="name"
+          placeholder="Ada Lovelace"
+          error={errors.full_name?.message}
+          {...register('full_name')}
+        />
         <Input
           label="Email"
           type="email"

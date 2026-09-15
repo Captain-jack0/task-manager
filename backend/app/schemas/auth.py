@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.schemas.user import UserOut
 
@@ -6,6 +6,14 @@ from app.schemas.user import UserOut
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+    # Optional so older clients (mobile) keep working; the web form requires it.
+    full_name: str | None = Field(default=None, max_length=120)
+
+    @field_validator("full_name")
+    @classmethod
+    def strip_name(cls, v: str | None) -> str | None:
+        v = (v or "").strip()
+        return v or None
 
 
 class LoginRequest(BaseModel):

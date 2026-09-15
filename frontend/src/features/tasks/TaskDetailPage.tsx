@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { extractErrorMessage } from '@/api/client';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { formatDate, isOverdue } from '@/lib/date';
 import { cn } from '@/lib/cn';
+import { displayName, initial } from '@/lib/people';
 import type { TaskStatus } from '@/types/api';
 import { useGithubStatus } from '@/features/integrations/useGithub';
 import { useProjects } from '@/features/projects/useProjects';
@@ -16,6 +17,7 @@ import { useMembers } from '@/features/workspaces/useMembers';
 import { CommentsSection } from './CommentsSection';
 import { TaskForm } from './TaskForm';
 import { TaskLinksSection } from './TaskLinksSection';
+import { SubtasksSection } from './SubtasksSection';
 import type { TaskFormValues } from './schemas';
 import { STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 import {
@@ -172,7 +174,15 @@ export function TaskDetailPage() {
             </span>
           </div>
 
-          <h1 className={cn('mt-3 text-xl font-semibold tracking-tight', isCompleted(task.status) && 'line-through')}>
+          {task.parent && (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              ↑ Part of{' '}
+              <Link to={`/tasks/${task.parent.id}`} className="font-medium text-slate-700 hover:underline dark:text-slate-200">
+                {task.parent.title}
+              </Link>
+            </p>
+          )}
+          <h1 className={cn('mt-3 text-xl font-semibold tracking-tight', isCompleted(task.status) && 'line-through', task.parent && 'mt-1')}>
             {task.title}
           </h1>
 
@@ -195,9 +205,9 @@ export function TaskDetailPage() {
             {assignee && (
               <span className="inline-flex items-center gap-1.5">
                 <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[10px] font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-                  {assignee.email[0]}
+                  {initial(assignee)}
                 </span>
-                {assignee.email}
+                {displayName(assignee)}
               </span>
             )}
             {task.due_date && (
@@ -232,6 +242,8 @@ export function TaskDetailPage() {
               ))}
             </div>
           )}
+
+          <SubtasksSection task={task} />
 
           <TaskLinksSection task={task} />
 

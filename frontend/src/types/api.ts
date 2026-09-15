@@ -15,6 +15,7 @@ export type TaskSortField =
 export interface User {
   id: string;
   email: string;
+  full_name: string | null;
   created_at: string;
 }
 
@@ -33,6 +34,7 @@ export interface WorkspaceCreateInput {
 export interface Member {
   user_id: string;
   email: string;
+  full_name: string | null;
   role: WorkspaceRole;
 }
 
@@ -44,6 +46,7 @@ export interface AddMemberInput {
 export interface Capacity {
   user_id: string;
   email: string;
+  full_name: string | null;
   role: WorkspaceRole;
   open_task_count: number;
   estimated_minutes: number;
@@ -62,6 +65,7 @@ export interface Comment {
   task_id: string;
   author_id: string;
   author_email: string;
+  author_name: string | null;
   body: string;
   created_at: string;
 }
@@ -81,6 +85,8 @@ export interface Sprint {
   end_date: string;
   /** ISO datetime once the sprint was completed; null while open. */
   closed_at: string | null;
+  /** Unfinished tasks moved out when the sprint was completed. */
+  carried_over: number;
   task_count: number;
   done_count: number;
   created_at: string;
@@ -90,6 +96,15 @@ export interface SprintCloseResult {
   sprint: Sprint;
   moved: number;
   kept: number;
+}
+
+export interface SprintReport {
+  sprint: Sprint;
+  by_status: Partial<Record<TaskStatus, number>>;
+  total: number;
+  finished: number;
+  estimated_minutes: number;
+  estimated_minutes_finished: number;
 }
 
 export interface SprintCreateInput {
@@ -119,6 +134,12 @@ export interface TaskRef {
 
 export type TaskLinkKind = 'blocks' | 'blocked_by' | 'relates';
 
+export interface TaskParentRef {
+  id: string;
+  title: string;
+  status: TaskStatus;
+}
+
 export interface TaskLinkInput {
   target_id: string;
   kind: TaskLinkKind;
@@ -145,6 +166,10 @@ export interface Task {
   blocked_by: TaskRef[];
   blocks: TaskRef[];
   related: TaskRef[];
+  parent_id: string | null;
+  parent: TaskParentRef | null;
+  subtask_total: number;
+  subtask_done: number;
   created_at: string;
   updated_at: string;
 }
@@ -167,6 +192,32 @@ export interface CalendarSubscription {
 export interface GithubConnectInput {
   token: string;
   repo: string;
+}
+
+export interface ProfileUpdateInput {
+  full_name: string | null;
+}
+
+export interface PasswordChangeInput {
+  current_password: string;
+  new_password: string;
+}
+
+export type NotificationKind = 'assigned' | 'comment' | 'mention';
+
+export interface Notification {
+  id: string;
+  kind: NotificationKind;
+  message: string;
+  task_id: string | null;
+  actor_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationList {
+  items: Notification[];
+  unread: number;
 }
 
 export interface TokenResponse {
@@ -193,10 +244,25 @@ export interface TaskCreateInput {
   project_id?: string | null;
   assignee_id?: string | null;
   sprint_id?: string | null;
+  parent_id?: string | null;
   tag_ids?: string[];
 }
 
 export type TaskUpdateInput = Partial<TaskCreateInput>;
+
+/** One change applied to many tasks. `sprint_id: null` = backlog. */
+export interface TaskBulkChanges {
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  sprint_id?: string | null;
+  project_id?: string | null;
+  assignee_id?: string | null;
+  add_tag_ids?: string[];
+}
+
+export interface BulkResult {
+  count: number;
+}
 
 export interface TaskSuggestion {
   task: Task;
@@ -231,6 +297,9 @@ export interface TaskListFilters {
   unassigned?: boolean;
   sprint_id?: string;
   backlog?: boolean;
+  /** false = hide closed tasks (the archive), true = only closed. */
+  archived?: boolean;
+  parent_id?: string;
   priority?: TaskPriority;
   energy?: TaskEnergy;
   due_before?: string;
