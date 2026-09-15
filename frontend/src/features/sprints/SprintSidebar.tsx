@@ -12,6 +12,7 @@ interface Props {
   value: SprintFilter;
   onChange: (next: SprintFilter) => void;
   onNew: () => void;
+  onEdit: (sprint: Sprint) => void;
   onComplete: (sprint: Sprint) => void;
   onDelete: (sprint: Sprint) => void;
 }
@@ -35,12 +36,14 @@ function SprintRow({
   sprint,
   selected,
   onSelect,
+  onEdit,
   onComplete,
   onDelete,
 }: {
   sprint: Sprint;
   selected: boolean;
   onSelect: () => void;
+  onEdit?: () => void;
   onComplete?: () => void;
   onDelete: () => void;
 }) {
@@ -74,6 +77,17 @@ function SprintRow({
           {overdue && <span className="ml-1 font-medium text-amber-600 dark:text-amber-400">· ended</span>}
         </span>
       </button>
+      {onEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`Edit ${sprint.name}`}
+          title="Edit sprint"
+          className={cn(ICON_BUTTON, 'hover:text-slate-700 dark:hover:text-slate-200')}
+        >
+          ✎
+        </button>
+      )}
       {onComplete && (
         <button
           type="button"
@@ -97,7 +111,7 @@ function SprintRow({
   );
 }
 
-export function SprintSidebar({ sprints, value, onChange, onNew, onComplete, onDelete }: Props) {
+export function SprintSidebar({ sprints, value, onChange, onNew, onEdit, onComplete, onDelete }: Props) {
   const [showClosed, setShowClosed] = useState(false);
   const open = sprints.filter(isOpenSprint);
   const closed = sprints.filter((s) => !isOpenSprint(s));
@@ -134,6 +148,7 @@ export function SprintSidebar({ sprints, value, onChange, onNew, onComplete, onD
             sprint={s}
             selected={value === s.id}
             onSelect={() => select(s.id)}
+            onEdit={() => onEdit(s)}
             onComplete={() => onComplete(s)}
             onDelete={() => onDelete(s)}
           />
