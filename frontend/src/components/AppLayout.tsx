@@ -44,6 +44,12 @@ export function AppLayout() {
             >
               Time
             </Link>
+            <Link
+              to="/dashboard"
+              className="hidden text-sm text-slate-500 transition-colors hover:text-slate-900 sm:inline dark:text-slate-400 dark:hover:text-white"
+            >
+              Dashboard
+            </Link>
             <WorkspaceSwitcher />
           </div>
           <div className="flex items-center gap-2">

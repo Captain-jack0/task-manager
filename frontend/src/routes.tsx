@@ -11,6 +11,7 @@ import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
 import { ReviewPage } from '@/features/review/ReviewPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { TimeReportPage } from '@/features/time/TimeReportPage';
+import { DashboardPage } from '@/features/dashboard/DashboardPage';
 
 export const router = createBrowserRouter([
   // Public marketing page — visitors land here, not on the login form.
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       { path: '/review', element: <ReviewPage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '/time', element: <TimeReportPage /> },
+      { path: '/dashboard', element: <DashboardPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
