@@ -3,6 +3,7 @@ import { Modal } from '@/components/Modal';
 import { STATUS_LABEL, STATUS_ORDER } from '@/features/tasks/status';
 import { formatDate } from '@/lib/date';
 import type { Sprint, TaskStatus } from '@/types/api';
+import { BurndownChart } from './BurndownChart';
 import { useSprintReport } from './useSprints';
 
 interface Props {
@@ -26,7 +27,7 @@ export function formatMinutes(minutes: number): string {
   return `${hours} h`;
 }
 
-/** Sprint summary: progress, status breakdown, estimates, carry-over. */
+/** Sprint summary: progress, burndown, status breakdown, estimates, carry-over. */
 export function SprintReportModal({ sprint, onClose }: Props) {
   const report = useSprintReport(sprint?.id);
   if (!sprint) return null;
@@ -62,6 +63,8 @@ export function SprintReportModal({ sprint, onClose }: Props) {
                 <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
               </div>
             </div>
+
+            <BurndownChart points={r.burndown} />
 
             <ul className="space-y-1.5">
               {STATUS_ORDER.map((s) => {

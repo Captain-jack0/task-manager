@@ -63,6 +63,12 @@ class SprintCloseResult(BaseModel):
     kept: int
 
 
+class BurndownPoint(BaseModel):
+    day: date
+    remaining: int | None = None
+    ideal: float
+
+
 class SprintReport(BaseModel):
     sprint: SprintOut
     by_status: dict[str, int]
@@ -70,3 +76,4 @@ class SprintReport(BaseModel):
     finished: int
     estimated_minutes: int
     estimated_minutes_finished: int
+    burndown: list[BurndownPoint]
