@@ -62,6 +62,7 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
       sprint_id: initial?.sprint_id ?? '',
       assignee_id: initial?.assignee_id ?? '',
       energy_level: initial?.energy_level ?? '',
+      recurrence: initial?.recurrence ?? '',
       estimated_minutes:
         initial?.estimated_minutes != null ? String(initial.estimated_minutes) : '',
       tag_ids: initial?.tags.map((t) => t.id) ?? [],
@@ -168,7 +169,26 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
         </div>
       </div>
 
-      <Input label="Due date" type="date" {...register('due_date')} />
+      <div className="grid grid-cols-2 gap-3">
+        <Input label="Due date" type="date" {...register('due_date')} />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="recurrence" className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Repeat
+          </label>
+          <select
+            id="recurrence"
+            {...register('recurrence')}
+            title="When this task is closed, the next occurrence is created automatically"
+            className="cursor-pointer rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
+          >
+            <option value="">Never</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Every 2 weeks</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="project_id" className="text-sm font-medium text-slate-600 dark:text-slate-300">

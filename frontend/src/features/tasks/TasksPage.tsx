@@ -111,6 +111,7 @@ export function TasksPage() {
         priority: values.priority,
         due_date: values.due_date ? new Date(values.due_date).toISOString() : null,
         energy_level: values.energy_level || null,
+        recurrence: values.recurrence || null,
         estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
         project_id: values.project_id || null,
         sprint_id: values.sprint_id || null,

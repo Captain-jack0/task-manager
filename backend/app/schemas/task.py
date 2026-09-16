@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.task import TaskEnergy, TaskPriority, TaskStatus
+from app.models.task import Recurrence, TaskEnergy, TaskPriority, TaskStatus
 from app.schemas.tag import TagOut
 
 TaskSortField = Literal[
@@ -28,6 +28,7 @@ class TaskBase(BaseModel):
     due_date: datetime | None = None
     estimated_minutes: int | None = Field(default=None, ge=1, le=100_000)
     energy_level: TaskEnergy | None = None
+    recurrence: Recurrence | None = None
     project_id: UUID | None = None
     assignee_id: UUID | None = None
     sprint_id: UUID | None = None
@@ -54,6 +55,7 @@ class TaskUpdate(BaseModel):
     due_date: datetime | None = None
     estimated_minutes: int | None = Field(default=None, ge=1, le=100_000)
     energy_level: TaskEnergy | None = None
+    recurrence: Recurrence | None = None
     project_id: UUID | None = None
     assignee_id: UUID | None = None
     sprint_id: UUID | None = None

@@ -19,7 +19,7 @@ import { TaskForm } from './TaskForm';
 import { TaskLinksSection } from './TaskLinksSection';
 import { SubtasksSection } from './SubtasksSection';
 import type { TaskFormValues } from './schemas';
-import { STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
+import { RECURRENCE_LABEL, STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 import {
   useCreateGithubIssue,
   useDeleteTask,
@@ -76,6 +76,7 @@ export function TaskDetailPage() {
           priority: values.priority,
           due_date: values.due_date ? new Date(values.due_date).toISOString() : null,
           energy_level: values.energy_level || null,
+          recurrence: values.recurrence || null,
           estimated_minutes: values.estimated_minutes ? Number(values.estimated_minutes) : null,
           project_id: values.project_id || null,
           sprint_id: values.sprint_id || null,
@@ -217,6 +218,9 @@ export function TaskDetailPage() {
             )}
             {task.estimated_minutes != null && <span>~{task.estimated_minutes} min</span>}
             {task.energy_level && <span className="capitalize">{task.energy_level} energy</span>}
+            {task.recurrence && (
+              <span title="Closing this task creates the next occurrence">↻ {RECURRENCE_LABEL[task.recurrence]}</span>
+            )}
             {task.snooze_count > 0 && <span>snoozed {task.snooze_count}×</span>}
           </div>
 
