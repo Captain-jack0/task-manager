@@ -11,7 +11,8 @@ const DEFAULT_MAX_BYTES = 3 * 1024 * 1024;
 export function formatBytes(size: number): string {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
-  return `${Math.round((size / (1024 * 1024)) * 10) / 10} MB`;
+  if (size < 1024 * 1024 * 1024) return `${Math.round((size / (1024 * 1024)) * 10) / 10} MB`;
+  return `${Math.round((size / (1024 * 1024 * 1024)) * 100) / 100} GB`;
 }
 
 const uploaderLabel = (a: Attachment) => a.uploader_name?.trim() || a.uploader_email || 'someone';
@@ -23,14 +24,18 @@ export function AttachmentsSection({ task }: { task: Task }) {
   const [downloading, setDownloading] = useState<string | null>(null);
   const key = ['tasks', 'attachments', task.id];
   const list = useQuery({ queryKey: key, queryFn: () => attachmentsApi.list(task.id) });
-  const config = useQuery({ queryKey: ['attachments', 'config'], queryFn: attachmentsApi.config, staleTime: Infinity });
+  const config = useQuery({ queryKey: ['attachments', 'config'], queryFn: attachmentsApi.config });
   const maxBytes = config.data?.max_bytes ?? DEFAULT_MAX_BYTES;
+  const quota = config.data?.quota_bytes ?? 0;
+  const used = config.data?.used_bytes ?? 0;
+  const quotaLabel = quota > 0 ? ` · ${formatBytes(used)} of ${formatBytes(quota)} used` : '';
 
   const upload = useMutation({
     mutationFn: (file: File) => attachmentsApi.upload(task.id, file),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: key });
       qc.invalidateQueries({ queryKey: ['tasks', 'activity', task.id] });
+      qc.invalidateQueries({ queryKey: ['attachments', 'config'] });
     },
     onError: (err) => toast.error(extractErrorMessage(err, 'Upload failed')),
   });
@@ -39,6 +44,7 @@ export function AttachmentsSection({ task }: { task: Task }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: key });
       qc.invalidateQueries({ queryKey: ['tasks', 'activity', task.id] });
+      qc.invalidateQueries({ queryKey: ['attachments', 'config'] });
       toast.success('Attachment removed');
     },
     onError: (err) => toast.error(extractErrorMessage(err, 'Could not remove attachment')),
@@ -97,7 +103,7 @@ export function AttachmentsSection({ task }: { task: Task }) {
       </div>
 
       {items.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-400">No files yet. Up to {formatBytes(maxBytes)} each.</p>
+        <p className="mt-2 text-xs text-slate-400">No files yet. Up to {formatBytes(maxBytes)} each{quotaLabel}.</p>
       ) : (
         <ul className="mt-2 flex flex-col gap-1">
           {items.map((a) => (

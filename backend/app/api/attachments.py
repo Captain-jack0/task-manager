@@ -37,10 +37,19 @@ def _out(att: Attachment, email: str | None = None, name: str | None = None) -> 
     )
 
 
+def _quota_bytes() -> int:
+    return get_settings().attachment_quota_mb * _MB
+
+
 @router.get("/attachments/config", response_model=AttachmentConfig)
-async def attachment_config(current_user: CurrentUser) -> AttachmentConfig:
-    """What the client may send: the size cap depends on whether object storage is on."""
-    return AttachmentConfig(max_bytes=_max_bytes())
+async def attachment_config(current_user: CurrentUser, session: SessionDep) -> AttachmentConfig:
+    """What the client may send: per-file cap (depends on whether object storage is
+    on), the instance-wide quota and how much of it is used."""
+    return AttachmentConfig(
+        max_bytes=_max_bytes(),
+        quota_bytes=_quota_bytes(),
+        used_bytes=await attachment_repo.total_bytes(session),
+    )
 
 
 @router.get("/tasks/{task_id}/attachments", response_model=list[AttachmentOut])
@@ -70,6 +79,13 @@ async def upload_attachment(
         )
     if not data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
+    quota = _quota_bytes()
+    # ponytail: check-then-write; two simultaneous uploads can overshoot by one file.
+    if quota and await attachment_repo.total_bytes(session) + len(data) > quota:
+        raise HTTPException(
+            status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+            detail=f"Storage quota of {quota // 1024 // _MB} GB is full; remove some attachments first",
+        )
     filename = (file.filename or "file")[:255]
     content_type = (file.content_type or "application/octet-stream")[:120]
     key: str | None = None
