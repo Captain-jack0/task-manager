@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import undefer
 
@@ -54,6 +54,11 @@ async def get(
     if with_data:
         stmt = stmt.options(undefer(Attachment.data))
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def total_bytes(session: AsyncSession) -> int:
+    """Bytes stored across every workspace — what the bucket bill is based on."""
+    return int(await session.scalar(select(func.coalesce(func.sum(Attachment.size), 0))) or 0)
 
 
 async def storage_keys_for_tasks(session: AsyncSession, *, task_ids: Sequence[UUID]) -> list[str]:
