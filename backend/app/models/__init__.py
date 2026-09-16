@@ -5,6 +5,7 @@ from app.models.project import Project
 from app.models.sprint import Sprint
 from app.models.tag import Tag
 from app.models.task import Recurrence, Task, TaskEnergy, TaskPriority, TaskStatus
+from app.models.task_event import TaskEvent
 from app.models.task_link import LinkKind, TaskLink
 from app.models.task_tag import task_tags
 from app.models.user import User
@@ -21,6 +22,7 @@ __all__ = [
     "Sprint",
     "Tag",
     "Task",
+    "TaskEvent",
     "TaskLink",
     "TaskEnergy",
     "TaskPriority",
