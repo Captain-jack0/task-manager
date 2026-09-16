@@ -6,8 +6,13 @@ import { Modal } from '@/components/Modal';
 import { extractErrorMessage } from '@/api/client';
 import { useConnectGithub, useDisconnectGithub, useGithubStatus } from './useGithub';
 
-export function GithubSettings() {
-  const [open, setOpen] = useState(false);
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+/** GitHub-integration modal; opened from the account menu. */
+export function GithubSettings({ open, onClose }: Props) {
   const [token, setToken] = useState('');
   const [repo, setRepo] = useState('');
   const { data: status } = useGithubStatus();
@@ -25,7 +30,7 @@ export function GithubSettings() {
           toast.success('GitHub connected');
           setToken('');
           setRepo('');
-          setOpen(false);
+          onClose();
         },
         onError: (err) => toast.error(extractErrorMessage(err, 'Could not connect GitHub')),
       },
@@ -41,16 +46,7 @@ export function GithubSettings() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title="GitHub integration"
-        className="hidden rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 sm:inline-flex sm:items-center sm:gap-1.5 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        <span className={connected ? 'text-emerald-500' : 'text-slate-400'}>●</span>
-        GitHub
-      </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="GitHub integration">
+      <Modal open={open} onClose={onClose} title="GitHub integration">
         {connected ? (
           <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -91,7 +87,7 @@ export function GithubSettings() {
               onChange={(e) => setToken(e.target.value)}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setOpen(false)}>
+              <Button variant="secondary" onClick={onClose}>
                 Cancel
               </Button>
               <Button
