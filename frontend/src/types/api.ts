@@ -222,6 +222,20 @@ export interface TaskCreateInput {
 
 export type TaskUpdateInput = Partial<TaskCreateInput>;
 
+/** One change applied to many tasks. `sprint_id: null` = backlog. */
+export interface TaskBulkChanges {
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  sprint_id?: string | null;
+  project_id?: string | null;
+  assignee_id?: string | null;
+  add_tag_ids?: string[];
+}
+
+export interface BulkResult {
+  count: number;
+}
+
 export interface TaskSuggestion {
   task: Task;
   score: number;
