@@ -147,10 +147,14 @@ export function TaskCard({
         task.energy_level ||
         task.snooze_count > 0 ||
         checklist ||
+        task.subtask_total > 0 ||
         task.blocked_by.length > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
           {task.estimated_minutes != null && <span>~{task.estimated_minutes}m</span>}
           {checklist && <span title="Checklist progress">{checklist}</span>}
+          {task.subtask_total > 0 && (
+            <span title="Subtasks done">⤷ {task.subtask_done}/{task.subtask_total}</span>
+          )}
           {!done && task.blocked_by.length > 0 && (
             <span
               title={`Blocked by: ${task.blocked_by.map((t) => t.title).join(', ')}`}
@@ -169,6 +173,12 @@ export function TaskCard({
             </span>
           )}
         </div>
+      )}
+
+      {task.parent && (
+        <p className="mt-2 truncate text-xs text-slate-400" title={`Subtask of ${task.parent.title}`}>
+          ↑ {task.parent.title}
+        </p>
       )}
 
       {projectName && (

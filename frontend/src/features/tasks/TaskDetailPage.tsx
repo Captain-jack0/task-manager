@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { extractErrorMessage } from '@/api/client';
@@ -17,6 +17,7 @@ import { useMembers } from '@/features/workspaces/useMembers';
 import { CommentsSection } from './CommentsSection';
 import { TaskForm } from './TaskForm';
 import { TaskLinksSection } from './TaskLinksSection';
+import { SubtasksSection } from './SubtasksSection';
 import type { TaskFormValues } from './schemas';
 import { STATUS_BADGE, STATUS_LABEL, STATUS_ORDER, isCompleted } from './status';
 import {
@@ -173,7 +174,15 @@ export function TaskDetailPage() {
             </span>
           </div>
 
-          <h1 className={cn('mt-3 text-xl font-semibold tracking-tight', isCompleted(task.status) && 'line-through')}>
+          {task.parent && (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              ↑ Part of{' '}
+              <Link to={`/tasks/${task.parent.id}`} className="font-medium text-slate-700 hover:underline dark:text-slate-200">
+                {task.parent.title}
+              </Link>
+            </p>
+          )}
+          <h1 className={cn('mt-3 text-xl font-semibold tracking-tight', isCompleted(task.status) && 'line-through', task.parent && 'mt-1')}>
             {task.title}
           </h1>
 
@@ -233,6 +242,8 @@ export function TaskDetailPage() {
               ))}
             </div>
           )}
+
+          <SubtasksSection task={task} />
 
           <TaskLinksSection task={task} />
 
