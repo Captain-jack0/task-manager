@@ -15,6 +15,7 @@ from app.models.task_link import LinkKind, TaskLink
 from app.models.user import User
 from app.repositories import (
     activity_repo,
+    attachment_repo,
     integration_repo,
     project_repo,
     sprint_repo,
@@ -40,7 +41,7 @@ from app.schemas.task import (
     TaskSuggestion,
     TaskUpdate,
 )
-from app.services import github, notify, recurrence, suggestions
+from app.services import github, notify, recurrence, storage, suggestions
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -435,10 +436,12 @@ async def delete_task(
     task = await _require_task(session, current_user, task_id, write=True)
     # Tasks this one was blocking may become free once it is gone.
     dependents = await task_link_repo.dependents(session, blocker_id=task.id)
+    keys = await attachment_repo.storage_keys_for_tasks(session, task_ids=[task.id])
     await task_repo.delete_task(session, task=task)
     for dependent in dependents:
         await task_link_repo.release_if_unblocked(session, dependent)
     await session.commit()
+    await storage.delete_many(keys)
 
 
 @router.post("/{task_id}/links", response_model=TaskOut)
@@ -580,6 +583,7 @@ async def bulk_delete_tasks(
     dependents: list[Task] = []
     for task in tasks:
         dependents.extend(await task_link_repo.dependents(session, blocker_id=task.id))
+    keys = await attachment_repo.storage_keys_for_tasks(session, task_ids=ids)
     for task in tasks:
         await session.delete(task)
     await session.flush()
@@ -588,4 +592,5 @@ async def bulk_delete_tasks(
         if dependent.id not in gone:
             await task_link_repo.release_if_unblocked(session, dependent)
     await session.commit()
+    await storage.delete_many(keys)
     return BulkResult(count=len(tasks))

@@ -4,6 +4,10 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
+class AttachmentConfig(BaseModel):
+    max_bytes: int
+
+
 class AttachmentOut(BaseModel):
     id: UUID
     task_id: UUID

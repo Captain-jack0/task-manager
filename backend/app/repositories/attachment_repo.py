@@ -16,15 +16,18 @@ async def create(
     uploader_id: UUID,
     filename: str,
     content_type: str,
-    data: bytes,
+    size: int,
+    data: bytes | None = None,
+    storage_key: str | None = None,
 ) -> Attachment:
     att = Attachment(
         task_id=task_id,
         uploader_id=uploader_id,
         filename=filename,
         content_type=content_type,
-        size=len(data),
+        size=size,
         data=data,
+        storage_key=storage_key,
     )
     session.add(att)
     await session.flush()
@@ -44,11 +47,25 @@ async def list_by_task(
     return [(a, email, name) for a, email, name in result.all()]
 
 
-async def get(session: AsyncSession, *, attachment_id: UUID, with_data: bool = False) -> Attachment | None:
+async def get(
+    session: AsyncSession, *, attachment_id: UUID, with_data: bool = False
+) -> Attachment | None:
     stmt = select(Attachment).where(Attachment.id == attachment_id)
     if with_data:
         stmt = stmt.options(undefer(Attachment.data))
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def storage_keys_for_tasks(session: AsyncSession, *, task_ids: Sequence[UUID]) -> list[str]:
+    """Object keys to remove from the bucket when these tasks are deleted (the rows cascade)."""
+    if not task_ids:
+        return []
+    result = await session.execute(
+        select(Attachment.storage_key).where(
+            Attachment.task_id.in_(task_ids), Attachment.storage_key.is_not(None)
+        )
+    )
+    return [k for k in result.scalars().all() if k]
 
 
 async def delete(session: AsyncSession, *, attachment: Attachment) -> None:

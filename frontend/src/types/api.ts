@@ -287,6 +287,10 @@ export interface Dashboard {
   active_sprint: { id: string; name: string; end_date: string; total: number; finished: number } | null;
 }
 
+export interface AttachmentConfig {
+  max_bytes: number;
+}
+
 export interface Attachment {
   id: string;
   task_id: string;

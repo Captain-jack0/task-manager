@@ -6,7 +6,7 @@ import { extractErrorMessage } from '@/api/client';
 import { formatDate } from '@/lib/date';
 import type { Attachment, Task } from '@/types/api';
 
-export const MAX_ATTACHMENT_MB = 3;
+const DEFAULT_MAX_BYTES = 3 * 1024 * 1024;
 
 export function formatBytes(size: number): string {
   if (size < 1024) return `${size} B`;
@@ -16,13 +16,15 @@ export function formatBytes(size: number): string {
 
 const uploaderLabel = (a: Attachment) => a.uploader_name?.trim() || a.uploader_email || 'someone';
 
-/** Files on a task: upload (≤ 3 MB each), download through the API, delete. */
+/** Files on a task: upload (cap from the server), download through the API, delete. */
 export function AttachmentsSection({ task }: { task: Task }) {
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const key = ['tasks', 'attachments', task.id];
   const list = useQuery({ queryKey: key, queryFn: () => attachmentsApi.list(task.id) });
+  const config = useQuery({ queryKey: ['attachments', 'config'], queryFn: attachmentsApi.config, staleTime: Infinity });
+  const maxBytes = config.data?.max_bytes ?? DEFAULT_MAX_BYTES;
 
   const upload = useMutation({
     mutationFn: (file: File) => attachmentsApi.upload(task.id, file),
@@ -45,8 +47,8 @@ export function AttachmentsSection({ task }: { task: Task }) {
   const onFiles = (files: FileList | null) => {
     if (!files) return;
     for (const file of Array.from(files)) {
-      if (file.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
-        toast.error(`${file.name} is larger than ${MAX_ATTACHMENT_MB} MB`);
+      if (file.size > maxBytes) {
+        toast.error(`${file.name} is larger than ${formatBytes(maxBytes)}`);
         continue;
       }
       upload.mutate(file);
@@ -95,7 +97,7 @@ export function AttachmentsSection({ task }: { task: Task }) {
       </div>
 
       {items.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-400">No files yet. Up to {MAX_ATTACHMENT_MB} MB each.</p>
+        <p className="mt-2 text-xs text-slate-400">No files yet. Up to {formatBytes(maxBytes)} each.</p>
       ) : (
         <ul className="mt-2 flex flex-col gap-1">
           {items.map((a) => (

@@ -1,7 +1,12 @@
 import { apiClient } from './client';
-import type { Attachment } from '@/types/api';
+import type { Attachment, AttachmentConfig } from '@/types/api';
 
 export const attachmentsApi = {
+  /** Server-side limits (the size cap grows when object storage is configured). */
+  config: async (): Promise<AttachmentConfig> => {
+    const { data } = await apiClient.get<AttachmentConfig>('/attachments/config');
+    return data;
+  },
   list: async (taskId: string): Promise<Attachment[]> => {
     const { data } = await apiClient.get<Attachment[]>(`/tasks/${taskId}/attachments`);
     return data;
