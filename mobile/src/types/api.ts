@@ -37,6 +37,7 @@ export interface Project {
 export interface Member {
   user_id: string;
   email: string;
+  full_name?: string | null;
   role: WorkspaceRole;
 }
 
@@ -71,8 +72,41 @@ export interface Task {
   github_issue_url: string | null;
   github_issue_number: number | null;
   tags: Tag[];
+  sprint_id?: string | null;
+  recurrence?: 'daily' | 'weekly' | 'biweekly' | 'monthly' | null;
+  logged_minutes?: number;
+  subtask_total?: number;
+  subtask_done?: number;
+  parent?: { id: string; title: string; status: TaskStatus } | null;
+  blocked_by?: { link_id: string; id: string; title: string; status: TaskStatus }[];
   created_at: string;
   updated_at: string;
+}
+
+export interface Sprint {
+  id: string;
+  workspace_id: string;
+  name: string;
+  goal: string | null;
+  start_date: string;
+  end_date: string;
+  closed_at: string | null;
+  task_count: number;
+  done_count: number;
+}
+
+export interface TimeEntry {
+  id: string;
+  task_id: string;
+  user_id: string;
+  started_at: string;
+  ended_at: string | null;
+  minutes: number;
+}
+
+export interface RunningTimer {
+  entry: TimeEntry;
+  task_title: string;
 }
 
 export interface TokenResponse {
@@ -113,6 +147,7 @@ export interface TaskCreateInput {
   energy_level?: TaskEnergy | null;
   project_id?: string | null;
   assignee_id?: string | null;
+  sprint_id?: string | null;
   tag_ids?: string[];
 }
 
@@ -128,6 +163,14 @@ export interface TaskListFilters {
   status?: TaskStatus;
   project_id?: string;
   search?: string;
+  sprint_id?: string;
+  backlog?: boolean;
+  archived?: boolean;
+  priority?: TaskPriority;
+  energy?: TaskEnergy;
+  assignee_id?: string;
+  sort?: 'created_at' | 'due_date' | 'priority' | 'updated_at';
+  order?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 }
