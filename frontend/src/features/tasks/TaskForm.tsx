@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { toast } from 'sonner';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
@@ -8,8 +10,17 @@ import { TagPicker } from '@/features/tags/TagPicker';
 import { useProjects } from '@/features/projects/useProjects';
 import { useSprints } from '@/features/sprints/useSprints';
 import { useMembers } from '@/features/workspaces/useMembers';
+import { displayName } from '@/lib/people';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
 import { taskFormSchema, type TaskFormValues } from './schemas';
+import {
+  allTemplates,
+  deleteCustomTemplate,
+  saveCustomTemplate,
+  templateToValues,
+  type TaskTemplate,
+} from './taskTemplates';
+import { TemplatePicker } from './TemplatePicker';
 import { STATUS_LABEL, STATUS_ORDER } from './status';
 
 interface Props {
@@ -35,6 +46,9 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
     register,
     handleSubmit,
     control,
+    getValues,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
@@ -48,15 +62,65 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
       sprint_id: initial?.sprint_id ?? '',
       assignee_id: initial?.assignee_id ?? '',
       energy_level: initial?.energy_level ?? '',
+      recurrence: initial?.recurrence ?? '',
       estimated_minutes:
         initial?.estimated_minutes != null ? String(initial.estimated_minutes) : '',
       tag_ids: initial?.tags.map((t) => t.id) ?? [],
     },
   });
 
+  const [templates, setTemplates] = useState<TaskTemplate[]>(() => allTemplates(workspaceId));
+  const description = watch('description') ?? '';
+
+  const applyTemplate = (tpl: TaskTemplate) => {
+    if (description.trim() && !window.confirm(`Replace the current description with the "${tpl.name}" template?`)) return;
+    const values = templateToValues(tpl, {
+      priority: getValues('priority'),
+      energy_level: getValues('energy_level') ?? '',
+      estimated_minutes: getValues('estimated_minutes') ?? '',
+    });
+    setValue('description', values.description, { shouldDirty: true });
+    if (values.priority) setValue('priority', values.priority);
+    if (values.energy_level) setValue('energy_level', values.energy_level);
+    if (values.estimated_minutes) setValue('estimated_minutes', values.estimated_minutes);
+  };
+
+  const saveTemplate = () => {
+    const name = window.prompt('Template name')?.trim();
+    if (!name) return;
+    const minutes = getValues('estimated_minutes');
+    setTemplates(
+      allTemplates(workspaceId).filter((t) => t.builtIn).concat(
+        saveCustomTemplate(workspaceId, {
+          name,
+          description,
+          priority: getValues('priority'),
+          energy: getValues('energy_level') || undefined,
+          estimated_minutes: minutes ? Number(minutes) : undefined,
+        }),
+      ),
+    );
+    toast.success(`Template "${name}" saved`);
+  };
+
+  const removeTemplate = (id: string) => {
+    setTemplates(allTemplates(workspaceId).filter((t) => t.builtIn).concat(deleteCustomTemplate(workspaceId, id)));
+    toast.success('Template removed');
+  };
+
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
       <Input label="Title" error={errors.title?.message} {...register('title')} />
+
+      {!initial && (
+        <TemplatePicker
+          templates={templates}
+          onPick={applyTemplate}
+          onSaveCurrent={saveTemplate}
+          onDelete={removeTemplate}
+          canSave={description.trim().length > 0}
+        />
+      )}
 
       <div className="flex flex-col gap-1">
         <label htmlFor="description" className="text-sm font-medium text-slate-600 dark:text-slate-300">
@@ -105,7 +169,26 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
         </div>
       </div>
 
-      <Input label="Due date" type="date" {...register('due_date')} />
+      <div className="grid grid-cols-2 gap-3">
+        <Input label="Due date" type="date" {...register('due_date')} />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="recurrence" className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Repeat
+          </label>
+          <select
+            id="recurrence"
+            {...register('recurrence')}
+            title="When this task is closed, the next occurrence is created automatically"
+            className="cursor-pointer rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm transition-colors focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-900/5 dark:border-slate-800 dark:bg-slate-900 dark:focus:border-slate-600 dark:focus:ring-white/10"
+          >
+            <option value="">Never</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Every 2 weeks</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="project_id" className="text-sm font-medium text-slate-600 dark:text-slate-300">
@@ -158,7 +241,7 @@ export function TaskForm({ initial, onSubmit, onCancel, isSubmitting }: Props) {
           <option value="">Unassigned</option>
           {(members ?? []).map((m) => (
             <option key={m.user_id} value={m.user_id}>
-              {m.email}
+              {displayName(m)}
             </option>
           ))}
         </select>

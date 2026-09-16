@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { displayName, initial } from '@/lib/people';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { extractErrorMessage } from '@/api/client';
@@ -51,12 +52,12 @@ export function CommentsSection({ taskId, members }: Props) {
         {(comments ?? []).map((c) => (
           <div key={c.id} className="group flex gap-2.5">
             <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-medium uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-              {c.author_email[0]}
+              {initial({ email: c.author_email, full_name: c.author_name })}
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <span className="font-medium text-slate-600 dark:text-slate-300">
-                  {c.author_email}
+                  {displayName({ email: c.author_email, full_name: c.author_name })}
                 </span>
                 <span>{formatDate(c.created_at)}</span>
                 {currentUser?.id === c.author_id && (
@@ -95,9 +96,10 @@ export function CommentsSection({ taskId, members }: Props) {
                 key={m.user_id}
                 type="button"
                 onClick={() => insertMention(m.email)}
+                title={m.email}
                 className="rounded-full border border-slate-200 px-2 py-0.5 text-xs text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
               >
-                @{m.email}
+                @{displayName(m)}
               </button>
             ))}
           </div>
