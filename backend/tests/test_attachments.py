@@ -103,7 +103,7 @@ async def test_instance_quota_blocks_uploads(
         f"/tasks/{task['id']}/attachments", files=files, headers=auth_headers
     )
     assert second.status_code == 507
-    assert "quota" in second.json()["detail"].lower()
+    assert "quota" in second.json()["error"].lower()
 
     # freeing space lets the next upload through again
     gone = await client.delete(f"/attachments/{first.json()['id']}", headers=auth_headers)
