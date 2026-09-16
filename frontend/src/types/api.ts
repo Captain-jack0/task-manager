@@ -269,6 +269,8 @@ export interface TaskListFilters {
   unassigned?: boolean;
   sprint_id?: string;
   backlog?: boolean;
+  /** false = hide closed tasks (the archive), true = only closed. */
+  archived?: boolean;
   priority?: TaskPriority;
   energy?: TaskEnergy;
   due_before?: string;
