@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
@@ -22,6 +23,8 @@ import { QuickAdd } from './QuickAdd';
 import { StuckTasksNudge } from './StuckTasksNudge';
 import { SuggestPanel } from './SuggestPanel';
 import { BulkActionBar } from './BulkActionBar';
+import { ShortcutsHelp } from './ShortcutsHelp';
+import { useTaskShortcuts } from './useTaskShortcuts';
 import { TaskBoard } from './TaskBoard';
 import { TaskFilterBar } from './TaskFilterBar';
 import { TaskForm } from './TaskForm';
@@ -29,7 +32,7 @@ import { TaskList } from './TaskList';
 import type { TaskFormValues } from './schemas';
 import { STATUS_LABEL, STATUS_ORDER } from './status';
 import { DEFAULT_TASK_FILTERS, hasActiveFilters, toQuery, type TaskFilterState } from './taskFilters';
-import { useBulkDelete, useBulkUpdate, useCreateTask, useTasks } from './useTasks';
+import { useBulkDelete, useBulkUpdate, useCreateTask, useTasks, useUpdateTask } from './useTasks';
 
 const STATUS_OPTIONS: { value: TaskStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -52,6 +55,10 @@ export function TasksPage() {
   const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
   const [reportSprint, setReportSprint] = useState<Sprint | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
   // Memoised so the "now"-relative due ranges don't change the query key every render.
   const fieldQuery = useMemo(() => toQuery(filters), [filters]);
 
@@ -86,6 +93,7 @@ export function TasksPage() {
   });
   const createTask = useCreateTask();
   const bulkUpdate = useBulkUpdate();
+  const updateTask = useUpdateTask();
   const bulkDelete = useBulkDelete();
 
   const handleCreate = (values: TaskFormValues) => {
@@ -233,6 +241,34 @@ export function TasksPage() {
     });
   const toggleSelectAll = () =>
     setSelectedIds(allVisibleSelected ? new Set() : new Set(tasks.map((t) => t.id)));
+  const focusedTask = view === 'list' && focusedIndex !== null ? tasks[focusedIndex] : undefined;
+  useTaskShortcuts({
+    onNew: () => setCreateOpen(true),
+    onSearch: () => searchRef.current?.focus(),
+    onHelp: () => setHelpOpen(true),
+    onToggleView: () => setView((v) => (v === 'list' ? 'board' : 'list')),
+    onMove: (delta) =>
+      setFocusedIndex((i) =>
+        tasks.length === 0 ? null : Math.min(tasks.length - 1, Math.max(0, (i ?? -1) + delta)),
+      ),
+    onOpen: () => {
+      if (focusedTask) navigate(`/tasks/${focusedTask.id}`);
+    },
+    onStatus: (n) => {
+      if (!focusedTask) return;
+      updateTask.mutate(
+        { id: focusedTask.id, input: { status: STATUS_ORDER[n] } },
+        { onError: (err) => toast.error(extractErrorMessage(err, 'Update failed')) },
+      );
+    },
+    onToggleSelect: () => {
+      if (focusedTask) toggleSelect(focusedTask.id, !selectedIds.has(focusedTask.id));
+    },
+    onEscape: () => {
+      setFocusedIndex(null);
+      setSelectedIds(new Set());
+    },
+  });
   const applyBulk = (changes: TaskBulkChanges) =>
     bulkUpdate.mutate(
       { ids: selectedVisible, changes },
@@ -436,8 +472,9 @@ export function TasksPage() {
         <section className="min-w-0">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <Input
+              ref={searchRef}
               aria-label="Search tasks"
-              placeholder="Search tasks…"
+              placeholder="Search tasks… ( / )"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full max-w-xs"
@@ -454,6 +491,15 @@ export function TasksPage() {
                 Select all
               </label>
             )}
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              title="Keyboard shortcuts (?)"
+              aria-label="Keyboard shortcuts"
+              className="rounded-lg border border-slate-200 px-2 py-1 font-mono text-xs text-slate-500 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              ?
+            </button>
             <div className="flex gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-800">
               {(['list', 'board'] as const).map((v) => (
                 <button
@@ -503,6 +549,7 @@ export function TasksPage() {
               sprints={sprintList ?? []}
               selected={selectedIds}
               onToggleSelect={toggleSelect}
+              focusedId={focusedTask?.id}
             />
           )}
 
@@ -529,6 +576,8 @@ export function TasksPage() {
           isSubmitting={createTask.isPending}
         />
       </Modal>
+
+      <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       <SprintReportModal sprint={reportSprint} onClose={() => setReportSprint(null)} />
 

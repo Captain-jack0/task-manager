@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { Sprint, Task, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
@@ -21,6 +22,8 @@ interface Props {
   assigneeName?: string;
   sprints?: Sprint[];
   selected?: boolean;
+  /** Keyboard highlight (j / k). */
+  focused?: boolean;
   onSelect?: (checked: boolean) => void;
   onToggleStatus: (next: TaskStatus) => void;
   onMoveToSprint?: (sprintId: string | null) => void;
@@ -36,6 +39,7 @@ export function TaskCard({
   assigneeName,
   sprints = [],
   selected = false,
+  focused = false,
   onSelect,
   onToggleStatus,
   onMoveToSprint,
@@ -47,15 +51,22 @@ export function TaskCard({
   const overdue = !done && isOverdue(task.due_date);
   const nextStatus = NEXT_STATUS[task.status];
   const checklist = checklistLabel(task.description);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focused) ref.current?.scrollIntoView({ block: 'nearest' });
+  }, [focused]);
 
   return (
     <div
+      ref={ref}
       className={cn(
         'group flex flex-col rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700',
         done && 'opacity-60',
         selected && 'border-slate-400 ring-2 ring-slate-300 dark:border-slate-500 dark:ring-slate-600',
+        focused && 'border-slate-900 ring-2 ring-slate-900/30 dark:border-white dark:ring-white/30',
       )}
       data-testid="task-card"
+      data-focused={focused || undefined}
     >
       <div className="flex items-start justify-between gap-3">
         {onSelect && (
