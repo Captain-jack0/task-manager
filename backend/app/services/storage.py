@@ -1,4 +1,5 @@
-"""Attachment bytes on S3-compatible object storage (Cloudflare R2, AWS S3, MinIO).
+"""Attachment bytes on S3-compatible object storage (Cloudflare R2, AWS S3,
+Google Cloud Storage interoperability mode, MinIO).
 
 Off unless S3_BUCKET is set — then the attachments API keeps bytes in Postgres
 with the small legacy cap. Uploads and downloads are proxied through the API,
@@ -15,8 +16,6 @@ from uuid import UUID, uuid4
 from app.config import get_settings
 
 log = logging.getLogger(__name__)
-
-_DELETE_BATCH = 1000  # S3 DeleteObjects hard limit
 
 
 def enabled() -> bool:
@@ -65,13 +64,11 @@ async def open_stream(key: str) -> Iterator[bytes]:
 
 async def delete_many(keys: list[str]) -> None:
     """Best effort, after the DB commit: a failure leaves an orphan object behind,
-    never a failed request."""
+    never a failed request. One call per key — Google Cloud Storage's S3 mode has
+    no batch DeleteObjects, and a task rarely carries more than a handful of files."""
     bucket = get_settings().s3_bucket
-    for i in range(0, len(keys), _DELETE_BATCH):
-        batch = [{"Key": k} for k in keys[i : i + _DELETE_BATCH]]
+    for key in keys:
         try:
-            await asyncio.to_thread(
-                _client().delete_objects, Bucket=bucket, Delete={"Objects": batch, "Quiet": True}
-            )
+            await asyncio.to_thread(_client().delete_object, Bucket=bucket, Key=key)
         except Exception:
-            log.exception("could not delete %d attachment object(s) from %s", len(batch), bucket)
+            log.exception("could not delete attachment object %s from %s", key, bucket)

@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     # Attachments on S3-compatible object storage (Cloudflare R2, AWS S3, MinIO).
     # Leave S3_BUCKET empty and files stay in Postgres with a 3 MB cap.
     s3_bucket: str = Field(default="")
-    s3_endpoint_url: str = Field(default="")  # R2: https://<account-id>.r2.cloudflarestorage.com
+    # R2: https://<account-id>.r2.cloudflarestorage.com · GCS: https://storage.googleapis.com
+    s3_endpoint_url: str = Field(default="")
     s3_region: str = Field(default="auto")
     s3_access_key_id: str = Field(default="")
     s3_secret_access_key: str = Field(default="")
