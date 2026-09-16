@@ -58,6 +58,8 @@ function sentence(e: TaskEvent, label: (field: string, value: string | null) => 
   switch (e.field) {
     case 'created':
       return e.new_value === 'recurrence' ? 'Created automatically from a repeating task' : `${who} created the task`;
+    case 'attachment':
+      return e.new_value ? `${who} attached ${e.new_value}` : `${who} removed ${e.old_value ?? 'a file'}`;
     case 'link':
       return e.new_value
         ? `${who} linked it (${e.new_value.replace(':', ': ')})`
