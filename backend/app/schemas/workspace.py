@@ -9,6 +9,7 @@ from app.models.workspace import Workspace, WorkspaceRole
 class MemberOut(BaseModel):
     user_id: UUID
     email: str
+    full_name: str | None = None
     role: WorkspaceRole
 
 
@@ -24,6 +25,7 @@ class UpdateMemberRequest(BaseModel):
 class CapacityOut(BaseModel):
     user_id: UUID
     email: str
+    full_name: str | None = None
     role: WorkspaceRole
     open_task_count: int
     estimated_minutes: int

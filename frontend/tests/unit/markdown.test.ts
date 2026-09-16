@@ -3,6 +3,9 @@ import {
   checkboxLines,
   checklistProgress,
   continueList,
+  insertFencedCode,
+  insideFence,
+  wrapLink,
   insertBlock,
   prefixLines,
   stripMarkdown,
@@ -68,6 +71,41 @@ describe('continueList (Enter inside a list)', () => {
   it('does nothing outside a list', () => {
     expect(continueList('plain text', 10)).toBeNull();
     expect(continueList('1.no space', 10)).toBeNull();
+  });
+});
+
+describe('code and links', () => {
+  it('inserts a fenced block on its own lines and selects the code', () => {
+    const r = insertFencedCode('intro', { start: 5, end: 5 });
+    expect(r.text).toBe('intro\n```\ncode\n```');
+    expect(r.text.slice(r.start, r.end)).toBe('code');
+  });
+
+  it('fences the selection with a language', () => {
+    const r = insertFencedCode('x = 1', { start: 0, end: 5 }, 'py');
+    expect(r.text).toBe('```py\nx = 1\n```');
+    expect(r.text.slice(r.start, r.end)).toBe('x = 1');
+  });
+
+  it('knows whether the caret is inside a closed fence', () => {
+    const block = '```js\nlet a\n```\nafter';
+    expect(insideFence(block, '```js\nlet'.length)).toBe(true);
+    expect(insideFence(block, block.length)).toBe(false);
+    expect(insideFence('plain', 5)).toBe(false);
+  });
+
+  it('treats an unclosed fence and the fence lines themselves as outside, so Tab still moves focus', () => {
+    const unclosed = '```js\nlet a\nprose';
+    expect(insideFence(unclosed, unclosed.length)).toBe(false);
+    const block = '```js\nlet a\n```';
+    expect(insideFence(block, block.length)).toBe(false); // caret on the closing fence line
+    expect(insideFence(block, 2)).toBe(false); // caret on the opening fence line
+  });
+
+  it('wraps the selection as a link with the url selected', () => {
+    const r = wrapLink('see docs', { start: 4, end: 8 });
+    expect(r.text).toBe('see [docs](url)');
+    expect(r.text.slice(r.start, r.end)).toBe('url');
   });
 });
 

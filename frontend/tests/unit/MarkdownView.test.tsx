@@ -43,4 +43,22 @@ describe('MarkdownView', () => {
     render(<MarkdownView text={TEXT} />);
     expect(screen.getAllByRole('checkbox').every((b) => (b as HTMLInputElement).disabled)).toBe(true);
   });
+
+  it('highlights fenced code and offers a Copy button', () => {
+    render(<MarkdownView text={'```js\nconst a = 1;\n```\n\nand `inline`'} />);
+    const block = document.querySelector('pre code');
+    expect(block?.className).toContain('language-js');
+    expect(block?.querySelectorAll('.hljs-keyword').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
+    // Inline code stays plain and outside <pre>.
+    const inline = screen.getByText('inline');
+    expect(inline.tagName).toBe('CODE');
+    expect(inline.closest('pre')).toBeNull();
+    expect(inline.className).toContain('bg-slate-100');
+  });
+
+  it('renders code with an unknown language without crashing', () => {
+    render(<MarkdownView text={'```notalanguage\nhello\n```'} />);
+    expect(screen.getByText('hello').closest('pre')).not.toBeNull();
+  });
 });

@@ -30,3 +30,61 @@ body,
     background-position: right 0.6rem center;
   }
 }
+
+/* Syntax colours for fenced code blocks (rehype-highlight / highlight.js classes). */
+@layer components {
+  .hljs {
+    color: inherit;
+  }
+  .hljs-comment,
+  .hljs-quote {
+    @apply italic text-slate-500;
+  }
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-built_in,
+  .hljs-literal,
+  .hljs-doctag {
+    @apply text-purple-700 dark:text-purple-300;
+  }
+  .hljs-string,
+  .hljs-attr,
+  .hljs-regexp,
+  .hljs-addition,
+  .hljs-template-tag {
+    @apply text-emerald-700 dark:text-emerald-300;
+  }
+  .hljs-number,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-meta,
+  .hljs-link {
+    @apply text-amber-700 dark:text-amber-300;
+  }
+  .hljs-title,
+  .hljs-function,
+  .hljs-section,
+  .hljs-name,
+  .hljs-type,
+  .hljs-class,
+  .hljs-selector-class,
+  .hljs-selector-id {
+    @apply text-blue-700 dark:text-blue-300;
+  }
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-property,
+  .hljs-attribute,
+  .hljs-params {
+    @apply text-rose-700 dark:text-rose-300;
+  }
+  .hljs-deletion {
+    @apply text-red-700 dark:text-red-300;
+  }
+  .hljs-emphasis {
+    @apply italic;
+  }
+  .hljs-strong {
+    @apply font-semibold;
+  }
+}

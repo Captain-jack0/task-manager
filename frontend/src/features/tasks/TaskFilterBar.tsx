@@ -1,4 +1,7 @@
 import type { Member } from '@/types/api';
+import { cn } from '@/lib/cn';
+import { displayName } from '@/lib/people';
+import { useAuthStore } from '@/features/auth/authStore';
 import {
   DEFAULT_TASK_FILTERS,
   hasActiveFilters,
@@ -22,6 +25,7 @@ const LEVELS = [
 ] as const;
 
 export function TaskFilterBar({ value, onChange, members }: Props) {
+  const me = useAuthStore((s) => s.user?.id);
   const set = <K extends keyof TaskFilterState>(key: K, next: TaskFilterState[K]) =>
     onChange({ ...value, [key]: next });
 
@@ -65,10 +69,27 @@ export function TaskFilterBar({ value, onChange, members }: Props) {
         <option value="none">Unassigned</option>
         {members.map((m) => (
           <option key={m.user_id} value={m.user_id}>
-            {m.email}
+            {displayName(m)}
           </option>
         ))}
       </select>
+
+      {me && (
+        <button
+          type="button"
+          onClick={() => set('assignee', value.assignee === me ? '' : me)}
+          aria-pressed={value.assignee === me}
+          title="Only tasks assigned to me"
+          className={cn(
+            'rounded-lg border px-2.5 py-1.5 text-xs transition-colors',
+            value.assignee === me
+              ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
+              : 'border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800',
+          )}
+        >
+          Me
+        </button>
+      )}
 
       <select
         aria-label="Filter by due date"
