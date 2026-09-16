@@ -19,6 +19,7 @@ from app.api import (
     sprints,
     tags,
     tasks,
+    time,
     workspaces,
 )
 from app.config import get_settings
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(notifications.router)
     app.include_router(activity.router)
     app.include_router(attachments.router)
+    app.include_router(time.router)
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

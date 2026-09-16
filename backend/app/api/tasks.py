@@ -21,6 +21,7 @@ from app.repositories import (
     tag_repo,
     task_link_repo,
     task_repo,
+    time_repo,
     workspace_repo,
 )
 from app.schemas.task import (
@@ -117,6 +118,7 @@ async def _out_many(session: AsyncSession, tasks: Sequence[Task]) -> list[TaskOu
     """TaskOut with links and subtask info attached — a fixed number of extra queries per page."""
     links = await task_link_repo.summaries(session, task_ids=[t.id for t in tasks])
     parents, counts = await task_repo.subtask_summary(session, tasks=tasks)
+    logged = await time_repo.logged_minutes(session, task_ids=[t.id for t in tasks])
     out: list[TaskOut] = []
     for t in tasks:
         total, done = counts.get(t.id, (0, 0))
@@ -131,6 +133,7 @@ async def _out_many(session: AsyncSession, tasks: Sequence[Task]) -> list[TaskOu
                     "parent": TaskParentRef.model_validate(parent) if parent else None,
                     "subtask_total": total,
                     "subtask_done": done,
+                    "logged_minutes": logged.get(t.id, 0),
                 }
             )
         )

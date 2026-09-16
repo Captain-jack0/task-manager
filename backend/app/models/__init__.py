@@ -9,6 +9,7 @@ from app.models.task import Recurrence, Task, TaskEnergy, TaskPriority, TaskStat
 from app.models.task_event import TaskEvent
 from app.models.task_link import LinkKind, TaskLink
 from app.models.task_tag import task_tags
+from app.models.time_entry import TimeEntry
 from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceMember, WorkspaceRole
 
@@ -29,6 +30,7 @@ __all__ = [
     "TaskEnergy",
     "TaskPriority",
     "TaskStatus",
+    "TimeEntry",
     "User",
     "Workspace",
     "WorkspaceMember",
