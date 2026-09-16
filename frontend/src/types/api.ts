@@ -193,6 +193,23 @@ export interface PasswordChangeInput {
   new_password: string;
 }
 
+export type NotificationKind = 'assigned' | 'comment' | 'mention';
+
+export interface Notification {
+  id: string;
+  kind: NotificationKind;
+  message: string;
+  task_id: string | null;
+  actor_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationList {
+  items: Notification[];
+  unread: number;
+}
+
 export interface TokenResponse {
   access_token: string;
   token_type: string;

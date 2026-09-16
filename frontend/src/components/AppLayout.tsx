@@ -7,6 +7,7 @@ import { useLogout } from '@/features/auth/useAuth';
 import { WorkspaceSwitcher } from '@/features/workspaces/WorkspaceSwitcher';
 import { GithubSettings } from '@/features/integrations/GithubSettings';
 import { CalendarSubscribe } from '@/features/calendar/CalendarSubscribe';
+import { NotificationBell } from '@/features/notifications/NotificationBell';
 
 export function AppLayout() {
   const user = useAuthStore((s) => s.user);
@@ -39,6 +40,7 @@ export function AppLayout() {
             <WorkspaceSwitcher />
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <CalendarSubscribe />
             <GithubSettings />
             <button

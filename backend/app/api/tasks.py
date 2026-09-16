@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.access import require_task, resolve_workspace
@@ -37,7 +37,7 @@ from app.schemas.task import (
     TaskSuggestion,
     TaskUpdate,
 )
-from app.services import github, suggestions
+from app.services import github, notify, suggestions
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -188,6 +188,7 @@ async def create_task(
     payload: TaskCreate,
     current_user: CurrentUser,
     session: SessionDep,
+    background: BackgroundTasks,
     workspace_id: UUID | None = None,
 ) -> TaskOut:
     ws_id = await resolve_workspace(session, current_user, workspace_id, write=True)
@@ -210,6 +211,8 @@ async def create_task(
         sprint_id=payload.sprint_id,
     )
     created = await task_repo.create_task(session, task=task, tags=tags)
+    await notify.task_assigned(session, background, task=created, actor=current_user)
+    await session.commit()
     return await _out(session, created)
 
 
@@ -252,8 +255,10 @@ async def update_task(
     payload: TaskUpdate,
     current_user: CurrentUser,
     session: SessionDep,
+    background: BackgroundTasks,
 ) -> TaskOut:
     task = await _require_task(session, current_user, task_id, write=True)
+    old_assignee = task.assignee_id
 
     update_data = payload.model_dump(exclude_unset=True, exclude={"tag_ids"})
     if "project_id" in update_data:
@@ -275,6 +280,9 @@ async def update_task(
         )
 
     updated = await task_repo.update_task(session, task=task, tags=tags)
+    if updated.assignee_id != old_assignee:
+        await notify.task_assigned(session, background, task=updated, actor=current_user)
+        await session.commit()
     return await _out(session, updated)
 
 
@@ -439,7 +447,10 @@ async def remove_link(
 
 @router.post("/bulk", response_model=BulkResult)
 async def bulk_update_tasks(
-    payload: TaskBulkUpdate, current_user: CurrentUser, session: SessionDep
+    payload: TaskBulkUpdate,
+    current_user: CurrentUser,
+    session: SessionDep,
+    background: BackgroundTasks,
 ) -> BulkResult:
     """Apply the same change to many tasks in one transaction. Any task the
     caller cannot edit aborts the whole request (404), nothing is committed."""
@@ -459,10 +470,13 @@ async def bulk_update_tasks(
         if "sprint_id" in changes and changes["sprint_id"] != task.sprint_id:
             await _validate_sprint(session, changes["sprint_id"], task.workspace_id)
         old_status = task.status
+        old_assignee = task.assignee_id
         for key, value in changes.items():
             setattr(task, key, value)
         if task.status != old_status:
             await task_link_repo.propagate_blocker_status(session, task)
+        if task.assignee_id != old_assignee:
+            await notify.task_assigned(session, background, task=task, actor=current_user)
         if new_tags:
             have = {t.id for t in task.tags}
             task.tags = [*task.tags, *[t for t in new_tags if t.id not in have]]

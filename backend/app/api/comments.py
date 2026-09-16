@@ -1,12 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from app.api.access import require_task
 from app.api.deps import CurrentUser, SessionDep
 from app.models.workspace import WorkspaceRole
 from app.repositories import comment_repo, workspace_repo
 from app.schemas.comment import CommentCreate, CommentOut
+from app.services import notify
 
 router = APIRouter(prefix="/tasks", tags=["comments"])
 
@@ -41,11 +42,14 @@ async def create_comment(
     payload: CommentCreate,
     current_user: CurrentUser,
     session: SessionDep,
+    background: BackgroundTasks,
 ) -> CommentOut:
-    await require_task(session, current_user, task_id, write=True)
+    task = await require_task(session, current_user, task_id, write=True)
     comment = await comment_repo.create(
         session, task_id=task_id, author_id=current_user.id, body=payload.body
     )
+    await notify.comment_posted(session, background, task=task, author=current_user, body=payload.body)
+    await session.commit()
     return CommentOut(
         id=comment.id,
         task_id=comment.task_id,
