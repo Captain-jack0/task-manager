@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     s3_access_key_id: str = Field(default="")
     s3_secret_access_key: str = Field(default="")
     attachment_max_mb: int = Field(default=25)
+    # Total across the whole instance (all workspaces); keeps the bucket inside a
+    # free tier (GCS 5 GB, R2 10 GB). 0 = unlimited.
+    attachment_quota_mb: int = Field(default=4096)
 
     @model_validator(mode="after")
     def _guard_production_secrets(self) -> "Settings":
