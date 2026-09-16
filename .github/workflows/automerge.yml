@@ -1,0 +1,66 @@
+# Merges open PRs labelled `automerge` into `dev` once they are green, lowest
+# number first (so a stacked chain lands in order). "Green" means: every GitHub
+# Actions check run finished with success/neutral/skipped, no external status
+# (e.g. Vercel) is failing, the PR is not a draft and GitHub reports no conflict.
+#
+# Runs after each CI workflow finishes, when the label is added, every 15 min as
+# a safety net, and on demand. Merges are made by github-actions[bot], so they do
+# not re-trigger the CI workflows on `dev` (the PR checks already covered them);
+# Render / Vercel still deploy from their own webhooks.
+name: automerge
+
+on:
+  workflow_run:
+    workflows: [backend-ci, frontend-ci, mobile-ci]
+    types: [completed]
+  pull_request:
+    types: [labeled]
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: automerge-dev
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge green `automerge` PRs into dev
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          numbers=$(gh pr list --repo "$REPO" --base dev --state open --label automerge \
+                      --json number --jq 'sort_by(.number) | .[].number')
+          [ -z "$numbers" ] && { echo "nothing labelled automerge"; exit 0; }
+          for n in $numbers; do
+            # After the previous merge GitHub recomputes mergeability; give it a minute.
+            for _ in 1 2 3 4 5 6; do
+              info=$(gh pr view "$n" --repo "$REPO" --json mergeable,isDraft,statusCheckRollup)
+              [ "$(jq -r .mergeable <<<"$info")" != "UNKNOWN" ] && break
+              sleep 10
+            done
+            mergeable=$(jq -r .mergeable <<<"$info")
+            draft=$(jq -r .isDraft <<<"$info")
+            green=$(jq -r '
+              [.statusCheckRollup[] | select(.__typename == "CheckRun")] as $runs
+              | ($runs | length > 0)
+                and ($runs | all(.status == "COMPLETED"
+                                 and (.conclusion == "SUCCESS" or .conclusion == "NEUTRAL" or .conclusion == "SKIPPED")))
+                and ([.statusCheckRollup[]
+                      | select(.__typename == "StatusContext" and (.state == "FAILURE" or .state == "ERROR"))]
+                     | length == 0)' <<<"$info")
+            if [ "$mergeable" != "MERGEABLE" ] || [ "$draft" = "true" ] || [ "$green" != "true" ]; then
+              echo "#$n: waiting (mergeable=$mergeable draft=$draft green=$green)"
+              continue
+            fi
+            echo "#$n: merging"
+            gh pr merge "$n" --repo "$REPO" --merge || echo "#$n: merge failed, retrying on the next run"
+          done
