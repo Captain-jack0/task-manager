@@ -251,6 +251,35 @@ export interface TimeReport {
   total_minutes: number;
 }
 
+export interface DashboardDay {
+  day: string;
+  completed: number;
+  created: number;
+}
+
+export interface DashboardPerson {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  open: number;
+  overdue: number;
+  completed: number;
+  estimated_open_minutes: number;
+  logged_minutes: number;
+}
+
+export interface Dashboard {
+  days: number;
+  open: number;
+  overdue: number;
+  completed: number;
+  created: number;
+  by_status: Partial<Record<TaskStatus, number>>;
+  per_day: DashboardDay[];
+  people: DashboardPerson[];
+  active_sprint: { id: string; name: string; end_date: string; total: number; finished: number } | null;
+}
+
 export interface Attachment {
   id: string;
   task_id: string;
