@@ -34,9 +34,8 @@ class FakeS3:
     def get_object(self, *, Bucket: str, Key: str) -> dict[str, Any]:  # noqa: N803
         return {"Body": _Body(self.objects[Key][0])}
 
-    def delete_objects(self, *, Bucket: str, Delete: dict[str, Any]) -> None:  # noqa: N803
-        for obj in Delete["Objects"]:
-            self.objects.pop(obj["Key"], None)
+    def delete_object(self, *, Bucket: str, Key: str) -> None:  # noqa: N803
+        self.objects.pop(Key, None)
 
 
 @pytest.fixture

@@ -6,6 +6,8 @@ from pydantic import BaseModel
 
 class AttachmentConfig(BaseModel):
     max_bytes: int
+    quota_bytes: int  # 0 = unlimited
+    used_bytes: int
 
 
 class AttachmentOut(BaseModel):

@@ -1,12 +1,16 @@
-import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { Modal } from '@/components/Modal';
 import { extractErrorMessage } from '@/api/client';
 import { useCalendarSubscription, useRotateCalendarToken } from './useCalendar';
 
-export function CalendarSubscribe() {
-  const [open, setOpen] = useState(false);
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+/** Calendar-feed modal; opened from the account menu. */
+export function CalendarSubscribe({ open, onClose }: Props) {
   const { data, isLoading } = useCalendarSubscription(open);
   const rotate = useRotateCalendarToken();
   const url = data?.url ?? '';
@@ -32,16 +36,7 @@ export function CalendarSubscribe() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title="Calendar subscription"
-        className="hidden rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 sm:inline-flex sm:items-center sm:gap-1.5 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        <span aria-hidden>🗓</span>
-        Calendar
-      </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Calendar subscription">
+      <Modal open={open} onClose={onClose} title="Calendar subscription">
         <div className="space-y-4">
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Subscribe to this feed to see every task with a due date in Google Calendar, Apple
