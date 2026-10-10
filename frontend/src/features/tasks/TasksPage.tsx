@@ -486,43 +486,45 @@ export function TasksPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full max-w-xs"
             />
-            {view === 'list' && tasks.length > 0 && (
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <input
-                  type="checkbox"
-                  checked={allVisibleSelected}
-                  onChange={toggleSelectAll}
-                  aria-label="Select all visible tasks"
-                  className="accent-slate-900 dark:accent-white"
-                />
-                Select all
-              </label>
-            )}
-            <button
-              type="button"
-              onClick={() => setHelpOpen(true)}
-              title="Keyboard shortcuts (?)"
-              aria-label="Keyboard shortcuts"
-              className="rounded-lg border border-slate-200 px-2 py-1 font-mono text-xs text-slate-500 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
-            >
-              ?
-            </button>
-            <div className="flex gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-800">
-              {(['list', 'board'] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setView(v)}
-                  className={cn(
-                    'rounded-md px-3 py-1 text-sm capitalize transition-colors',
-                    view === v
-                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
-                  )}
-                >
-                  {v}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              {view === 'list' && tasks.length > 0 && (
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="Select all visible tasks"
+                    className="accent-slate-900 dark:accent-white"
+                  />
+                  Select all
+                </label>
+              )}
+              <div className="flex gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-800">
+                {(['list', 'board'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setView(v)}
+                    className={cn(
+                      'rounded-md px-3 py-1 text-sm capitalize transition-colors',
+                      view === v
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
+                    )}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                title="Keyboard shortcuts (?)"
+                aria-label="Keyboard shortcuts"
+                className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-mono text-sm text-slate-500 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+              >
+                ?
+              </button>
             </div>
           </div>
 

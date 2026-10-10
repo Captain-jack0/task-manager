@@ -289,6 +289,9 @@ export interface Dashboard {
 
 export interface AttachmentConfig {
   max_bytes: number;
+  /** Instance-wide cap in bytes; 0 = unlimited. */
+  quota_bytes: number;
+  used_bytes: number;
 }
 
 export interface Attachment {
