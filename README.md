@@ -115,7 +115,7 @@ Coverage target: **≥ 80%** on both sides.
 
 Total cost: **$0/mo, no credit card required**. Trade-off: backend cold-starts after ~15 min of idle.
 
-#### 1. Postgres → Neon (always free, 0.5 GB)
+#### 1. Postgres → Neon (free: 1 GB storage, 100 compute-hours and 5 GB network transfer per project per month)
 1. Sign up at https://console.neon.tech (GitHub login).
 2. Create a project, region close to you (e.g. Frankfurt).
 3. Copy the **pooled** connection string. Convert it to async format:
@@ -138,6 +138,29 @@ Total cost: **$0/mo, no credit card required**. Trade-off: backend cold-starts a
 3. **Environment Variable:** `VITE_API_BASE_URL` = `https://task-manager-api.onrender.com`
 4. Deploy.
 5. Once Vercel gives you the URL, go back to Render dashboard → update `FRONTEND_URL` env var → Render redeploys automatically (CORS).
+
+#### 4. Attachments → object storage (keeps Neon's transfer quota safe)
+Without this, attachment bytes live in Postgres and **every download is a full copy out of Neon**, which eats the
+5 GB/month network-transfer allowance fast. Point the API at a bucket (Cloudflare R2, Google Cloud Storage
+interoperability mode, AWS S3 — any S3-compatible store) in the Render dashboard:
+
+```
+S3_BUCKET=<bucket>
+S3_ENDPOINT_URL=https://storage.googleapis.com     # or https://<account-id>.r2.cloudflarestorage.com
+S3_REGION=auto
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+```
+
+New uploads go straight to the bucket. Move the files that were uploaded before, once, from your machine
+(same env vars plus the production `DATABASE_URL`):
+
+```bash
+cd backend && python -m app.scripts.move_attachments_to_storage
+```
+
+It is safe to rerun; afterwards run `VACUUM FULL attachments;` in Neon's SQL editor to hand the space back.
+`ATTACHMENT_QUOTA_MB` (default 4096) caps the total so the bucket stays inside its free tier.
 
 ### Paid alternative: Fly.io (no cold starts, ~$4/mo)
 

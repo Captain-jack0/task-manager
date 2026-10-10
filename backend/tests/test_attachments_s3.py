@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.repositories import attachment_repo
+from app.scripts.move_attachments_to_storage import move_all
 from app.services import storage
 
 
@@ -38,12 +39,16 @@ class FakeS3:
         self.objects.pop(Key, None)
 
 
-@pytest.fixture
-def s3(monkeypatch: pytest.MonkeyPatch) -> FakeS3:
+def _enable_s3(monkeypatch: pytest.MonkeyPatch) -> FakeS3:
     fake = FakeS3()
     monkeypatch.setattr(get_settings(), "s3_bucket", "test-bucket")
     monkeypatch.setattr(storage, "_client", lambda: fake)
     return fake
+
+
+@pytest.fixture
+def s3(monkeypatch: pytest.MonkeyPatch) -> FakeS3:
+    return _enable_s3(monkeypatch)
 
 
 async def _task(client: AsyncClient, headers: dict[str, str], title: str) -> str:
@@ -105,3 +110,32 @@ async def test_deleting_tasks_removes_their_objects(
     r = await client.post("/tasks/bulk-delete", json={"task_ids": [bulk]}, headers=auth_headers)
     assert r.status_code == 200, r.text
     assert s3.objects == {}
+
+
+async def test_move_script_moves_inline_rows_to_the_bucket(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Uploaded while storage is off: bytes land inline in Postgres.
+    task_id = await _task(client, auth_headers, "legacy")
+    r = await client.post(
+        f"/tasks/{task_id}/attachments",
+        files={"file": ("old.txt", b"legacy bytes", "text/plain")},
+        headers=auth_headers,
+    )
+    assert r.status_code == 201, r.text
+    att_id = UUID(r.json()["id"])
+
+    fake = _enable_s3(monkeypatch)
+    files, total = await move_all(session)
+    assert files >= 1 and total >= len(b"legacy bytes")  # other tests leave inline rows too
+
+    row = await attachment_repo.get(session, attachment_id=att_id, with_data=True)
+    assert row is not None and row.storage_key and row.data is None
+    assert fake.objects[row.storage_key] == (b"legacy bytes", "text/plain")
+    down = await client.get(f"/attachments/{att_id}/download", headers=auth_headers)
+    assert down.status_code == 200 and down.content == b"legacy bytes"
+
+    assert await move_all(session) == (0, 0)  # nothing left: rerunning is a no-op
