@@ -74,4 +74,7 @@ export const tasksApi = {
     const { data } = await apiClient.post<Task>(`/tasks/${id}/github-sync`);
     return data;
   },
+  testGithubIssue: async (id: string): Promise<void> => {
+    await apiClient.post(`/tasks/${id}/github-test`);
+  },
 };

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { projectsApi } from '@/api/projects';
 import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
-import type { ProjectCreateInput } from '@/types/api';
+import type { ProjectCreateInput, ProjectUpdateInput } from '@/types/api';
 
 export const PROJECTS_KEY = ['projects'] as const;
 
@@ -18,6 +18,15 @@ export function useCreateProject() {
   return useMutation({
     mutationFn: (input: ProjectCreateInput) =>
       projectsApi.create(input, useWorkspaceStore.getState().currentWorkspaceId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PROJECTS_KEY }),
+  });
+}
+
+export function useUpdateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ProjectUpdateInput }) =>
+      projectsApi.update(id, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: PROJECTS_KEY }),
   });
 }

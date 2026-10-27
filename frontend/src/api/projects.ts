@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Project, ProjectCreateInput } from '@/types/api';
+import type { Project, ProjectCreateInput, ProjectUpdateInput } from '@/types/api';
 
 export const projectsApi = {
   list: async (workspaceId?: string | null): Promise<Project[]> => {
@@ -15,6 +15,10 @@ export const projectsApi = {
     const { data } = await apiClient.post<Project>('/projects', input, {
       params: workspaceId ? { workspace_id: workspaceId } : undefined,
     });
+    return data;
+  },
+  update: async (id: string, input: ProjectUpdateInput): Promise<Project> => {
+    const { data } = await apiClient.put<Project>(`/projects/${id}`, input);
     return data;
   },
   remove: async (id: string): Promise<void> => {

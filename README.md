@@ -176,21 +176,23 @@ fly deploy
 ## Task test automation (any repo)
 
 [`.github/workflows/task-test.yml`](.github/workflows/task-test.yml) turns a task
-into a test run in any project, with no per-project test config. When an issue is
-opened (or labelled `test`), or a PR that references one is opened/updated, Claude
+into a test run in any project, with no per-project test config. When an issue gets
+the `test` label, or a PR that references one is opened/updated, Claude
 Code reads the issue, works out how that repo runs its tests, writes or finds one
 test per acceptance criterion, runs them and posts a report (criterion → test →
 result → how it was tested) on the issue, on the PR and as a comment on the linked
 task here. New tests are pushed to `test/issue-N`. A task's issue opens in the repo
 linked to its project (set when creating or importing a project), or in the account's
-default repo; the GitHub token must have Issues: write on each of them.
+default repo; the GitHub token must have Issues: write on each of them. Task Manager
+applies the label: turn on **Auto-test** on a project (sidebar, hover its name) to
+label every issue it opens, or press **Test** on a linked task to run on demand.
 
 Enable it in another repo with one file, `.github/workflows/task-test.yml`:
 
 ```yaml
 name: task-test
 on:
-  issues: { types: [opened, labeled] }
+  issues: { types: [labeled] }
   pull_request: { types: [opened, synchronize, reopened] }
 permissions: { contents: write, issues: write, pull-requests: write }
 jobs:

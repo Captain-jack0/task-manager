@@ -19,7 +19,8 @@ export function TestAutomationGuide({ repos, reportToken, apiBaseUrl }: Props) {
       </summary>
       <div className="space-y-4 border-t border-slate-200 px-4 py-4 dark:border-slate-800">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          When you open a task as an issue, Claude writes and runs tests for it in that repo
+          When a task's issue gets the <code>test</code> label (Auto-test on its project, or
+          the task's Test button), Claude writes and runs tests for it in that repo
           and posts the report on the issue and here, as a comment on the task. Two steps,
           once per repo.
         </p>

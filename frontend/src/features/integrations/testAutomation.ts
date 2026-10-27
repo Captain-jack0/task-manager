@@ -1,7 +1,7 @@
 /** Caller workflow a repo adds to run task tests (see task-manager README). */
 export const TASK_TEST_WORKFLOW = `name: task-test
 on:
-  issues: { types: [opened, labeled] }
+  issues: { types: [labeled] }
   pull_request: { types: [opened, synchronize, reopened] }
 permissions: { contents: write, issues: write, pull-requests: write }
 jobs:

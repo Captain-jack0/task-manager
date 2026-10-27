@@ -1,7 +1,8 @@
 # Task test automation — project-agnostic.
 #
-# When an issue is opened (or labelled `test`), or a PR that references one is
-# opened/updated, Claude Code reads the issue, works out how THIS repo runs its
+# When an issue is labelled `test` (Task Manager adds it: Auto-test on a project,
+# or a task's Test button), or a PR that references one is opened/updated,
+# Claude Code reads the issue, works out how THIS repo runs its
 # tests, writes or finds one test per acceptance criterion, runs them and posts
 # a report (criterion → test → result → how it was tested) on the issue, on the
 # PR and on the linked Task Manager task. New tests land on `test/issue-N`.
@@ -18,7 +19,7 @@ name: task-test
 on:
   workflow_call:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -29,8 +30,8 @@ permissions:
 
 jobs:
   test:
-    # issues: on open, or whenever the `test` label is applied (re-run on demand)
-    if: github.event_name != 'issues' || github.event.action == 'opened' || github.event.label.name == 'test'
+    # issues: only when the `test` label is applied (re-apply it to re-run)
+    if: github.event_name != 'issues' || github.event.label.name == 'test'
     runs-on: ubuntu-latest
     concurrency:
       group: task-test-${{ github.event.issue.number || github.event.pull_request.number }}

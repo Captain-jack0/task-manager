@@ -390,21 +390,36 @@ async def create_github_issue(
         )
 
     # Tasks in a project linked to a repo open there; the rest use the default.
-    repo = integration.repo
+    repo, auto_test = integration.repo, False
     if task.project_id is not None:
         project = await project_repo.get(session, project_id=task.project_id)
-        if project is not None and project.github_repo:
-            repo = project.github_repo
-    result = await github.create_issue(
-        decrypt_secret(integration.token),
-        repo,
-        title=task.title,
-        body=task.description or "",
-    )
+        if project is not None:
+            repo = project.github_repo or repo
+            auto_test = project.auto_test
+    token = decrypt_secret(integration.token)
+    result = await github.create_issue(token, repo, title=task.title, body=task.description or "")
     task.github_issue_url = result["html_url"]
     task.github_issue_number = result["number"]
     updated = await task_repo.update_task(session, task=task, tags=None)
+    if auto_test:  # after linking, so a label failure never orphans the issue
+        await github.add_test_label(token, repo, result["number"])
     return await _out(session, updated)
+
+
+async def _linked_issue(session: AsyncSession, user: User, task: Task) -> tuple[str, str, int]:
+    """(token, repo, issue number) for the task's linked issue, else a 400."""
+    if not task.github_issue_number:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This task isn't linked to a GitHub issue",
+        )
+    integration = await integration_repo.get_github(session, user_id=user.id)
+    if integration is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Connect GitHub first"
+        )
+    repo = github.repo_from_issue_url(task.github_issue_url or "") or integration.repo
+    return decrypt_secret(integration.token), repo, task.github_issue_number
 
 
 @router.post("/{task_id}/github-sync", response_model=TaskOut)
@@ -414,26 +429,25 @@ async def sync_github_issue(
 ) -> TaskOut:
     """Pull the linked GitHub issue's state; if it's closed, move the task to Done."""
     task = await _require_task(session, current_user, task_id, write=True)
-    if not task.github_issue_number:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This task isn't linked to a GitHub issue",
-        )
-    integration = await integration_repo.get_github(session, user_id=current_user.id)
-    if integration is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Connect GitHub first"
-        )
-
-    repo = github.repo_from_issue_url(task.github_issue_url or "") or integration.repo
-    state = await github.get_issue_state(
-        decrypt_secret(integration.token), repo, task.github_issue_number
-    )
+    token, repo, number = await _linked_issue(session, current_user, task)
+    state = await github.get_issue_state(token, repo, number)
     if state == "closed" and task.status not in (TaskStatus.DONE, TaskStatus.CLOSED):
         task.status = TaskStatus.DONE
         await task_link_repo.propagate_blocker_status(session, task)
         task = await task_repo.update_task(session, task=task, tags=None)
     return await _out(session, task)
+
+
+@router.post("/{task_id}/github-test", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("10/minute")
+async def trigger_github_test(
+    request: Request, task_id: UUID, current_user: CurrentUser, session: SessionDep
+) -> dict[str, str]:
+    """Run the repo's task-test workflow on the linked issue by re-applying `test`."""
+    task = await _require_task(session, current_user, task_id, write=True)
+    token, repo, number = await _linked_issue(session, current_user, task)
+    await github.add_test_label(token, repo, number)
+    return {"status": "queued"}
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

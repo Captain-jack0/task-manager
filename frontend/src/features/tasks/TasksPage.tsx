@@ -9,7 +9,12 @@ import { extractErrorMessage } from '@/api/client';
 import type { Sprint, SprintCreateInput, TaskBulkChanges, TaskStatus } from '@/types/api';
 import { TagBadge } from '@/features/tags/TagBadge';
 import { useTags, useDeleteTag } from '@/features/tags/useTags';
-import { useCreateProject, useDeleteProject, useProjects } from '@/features/projects/useProjects';
+import {
+  useCreateProject,
+  useDeleteProject,
+  useProjects,
+  useUpdateProject,
+} from '@/features/projects/useProjects';
 import { CompleteSprintModal } from '@/features/sprints/CompleteSprintModal';
 import { SprintForm } from '@/features/sprints/SprintForm';
 import { SprintReportModal } from '@/features/sprints/SprintReportModal';
@@ -74,6 +79,7 @@ export function TasksPage() {
   const { data: memberList } = useMembers(workspaceId);
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
+  const updateProject = useUpdateProject();
   const { data: sprintList } = useSprints(workspaceId);
   const createSprint = useCreateSprint();
   const updateSprint = useUpdateSprint();
@@ -155,6 +161,13 @@ export function TasksPage() {
         },
         onError: (err) => toast.error(extractErrorMessage(err, 'Could not create project')),
       },
+    );
+  };
+
+  const handleToggleAutoTest = (p: { id: string; auto_test: boolean }) => {
+    updateProject.mutate(
+      { id: p.id, input: { auto_test: !p.auto_test } },
+      { onError: (err) => toast.error(extractErrorMessage(err, 'Could not update project')) },
     );
   };
 
@@ -464,6 +477,25 @@ export function TasksPage() {
                     >
                       {p.name}
                     </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAutoTest(p)}
+                    aria-pressed={p.auto_test}
+                    aria-label={`Auto-test ${p.name}`}
+                    title={
+                      p.auto_test
+                        ? 'Auto-test on: every issue this project opens runs the test workflow'
+                        : 'Auto-test off: click to run the test workflow on every new issue'
+                    }
+                    className={cn(
+                      'ml-1 rounded px-1 text-[10px] font-semibold uppercase transition-opacity',
+                      p.auto_test
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                        : 'text-slate-400 opacity-0 hover:text-slate-700 group-hover:opacity-100 dark:hover:text-slate-200',
+                    )}
+                  >
+                    test
                   </button>
                   <button
                     type="button"

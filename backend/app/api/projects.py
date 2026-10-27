@@ -67,6 +67,7 @@ async def create_project(
         name=payload.name,
         color=payload.color,
         github_repo=payload.github_repo,
+        auto_test=payload.auto_test,
     )
     return ProjectOut.model_validate(project)
 

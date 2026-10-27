@@ -16,6 +16,7 @@ class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     color: str | None = Field(default=None, max_length=7)
     github_repo: str | None = Field(default=None, max_length=140)
+    auto_test: bool = False
 
     @field_validator("github_repo")
     @classmethod
@@ -35,6 +36,7 @@ class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     color: str | None = Field(default=None, max_length=7)
     github_repo: str | None = Field(default=None, max_length=140)
+    auto_test: bool | None = None
 
     @field_validator("github_repo")
     @classmethod
@@ -50,4 +52,5 @@ class ProjectOut(BaseModel):
     name: str
     color: str | None = None
     github_repo: str | None = None
+    auto_test: bool = False
     created_at: datetime

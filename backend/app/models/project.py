@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String, false
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,3 +22,8 @@ class Project(Base, UUIDMixin, TimestampMixin):
     # GitHub repo (owner/repo) this project's tasks open issues in; NULL falls
     # back to the user's default repo from their GitHub integration.
     github_repo: Mapped[str | None] = mapped_column(String(140), nullable=True)
+    # Label every issue this project opens `test`, so the repo's task-test
+    # workflow runs on it. Off by default: it spends the repo owner's Claude usage.
+    auto_test: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
