@@ -44,6 +44,11 @@ export function useSyncGithubIssue() {
   });
 }
 
+/** Re-applies the `test` label so the repo's task-test workflow runs; nothing local changes. */
+export function useTestGithubIssue() {
+  return useMutation({ mutationFn: (id: string) => tasksApi.testGithubIssue(id) });
+}
+
 const invalidateAfterBulk = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: TASKS_KEY });
   qc.invalidateQueries({ queryKey: ['sprints'] });

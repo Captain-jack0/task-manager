@@ -208,3 +208,9 @@ async def subtask_summary(
         )
         counts = {pid: (int(total), int(d or 0)) for pid, total, d in rows.all()}
     return parents, counts
+
+
+async def get_by_github_issue_url(session: AsyncSession, *, url: str) -> Task | None:
+    """The task that was pushed to the given GitHub issue (its html_url), if any."""
+    result = await session.execute(select(Task).where(Task.github_issue_url == url))
+    return result.scalars().first()

@@ -1,0 +1,153 @@
+# Task test automation — project-agnostic.
+#
+# When an issue is labelled `test` (Task Manager adds it: Auto-test on a project,
+# or a task's Test button), or a PR that references one is opened/updated,
+# Claude Code reads the issue, works out how THIS repo runs its
+# tests, writes or finds one test per acceptance criterion, runs them and posts
+# a report (criterion → test → result → how it was tested) on the issue, on the
+# PR and on the linked Task Manager task. New tests land on `test/issue-N`.
+#
+# Reuse from any repo (README → "Task test automation"):
+#   jobs:
+#     test:
+#       uses: Captain-jack0/task-manager/.github/workflows/task-test.yml@dev
+#       secrets: inherit
+# Needs: secret ANTHROPIC_API_KEY (or CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`
+# on a Pro/Max plan), secret TASK_MANAGER_REPORT_SECRET, var TASK_MANAGER_URL.
+name: task-test
+
+on:
+  workflow_call:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  test:
+    # issues: only when the `test` label is applied (re-apply it to re-run)
+    if: github.event_name != 'issues' || github.event.label.name == 'test'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: task-test-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: true
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPORT: ${{ runner.temp }}/task-test-report.md
+      ISSUE_FILE: ${{ runner.temp }}/issue.md
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve the linked issue
+        id: issue
+        env:
+          EVENT: ${{ github.event_name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "issues" ]; then
+            n="$ISSUE_NUMBER"
+          else
+            # "#12" / "closes #12" in the PR body, else an "issue-12" branch name
+            n=$(printf '%s\n%s\n' "$PR_BODY" "$PR_BRANCH" \
+                | grep -oiE '(#|issue[-/])[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          fi
+          if [ -z "$n" ]; then
+            echo "No linked issue — nothing to test against."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "number=$n" >> "$GITHUB_OUTPUT"
+          gh issue view "$n" --json title,body \
+            --jq '"# " + .title + "\n\n" + (.body // "")' > "$ISSUE_FILE"
+
+      - name: Write and run tests for the task
+        if: steps.issue.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          claude_args: '--max-turns 80 --allowedTools "Bash,Read,Write,Edit,MultiEdit,Glob,Grep"'
+          prompt: |
+            You are the test automation for this repository. Event: ${{ github.event_name }}.
+            Issue #${{ steps.issue.outputs.number }} describes a task; its title and body are in
+            ${{ runner.temp }}/issue.md. Work inside the checked-out repository.
+
+            1. Find out how this project runs its tests: read .github/workflows, package
+               manifests (package.json, pyproject.toml, go.mod, Cargo.toml, ...), README and
+               CLAUDE.md/AGENTS.md. Install what the suite needs. No database service is
+               available here: prefer unit-level tests or the project's own in-memory path.
+            2. Extract the acceptance criteria from the issue as a numbered list. If the issue
+               states none, derive them from its title and description.
+            3. For each criterion, find an existing test that covers it or write a new one
+               following the project's test conventions (same framework, folder and naming).
+               Run it and record the command, pass/fail and what it checks.
+            4. On an `issues` event the work is probably not implemented yet: failing tests are
+               expected and prove the criterion is testable. On a `pull_request` event every
+               criterion should pass; also run the full existing suite and report its result.
+            5. Only add or change test files. Never touch application code, CI files or secrets.
+            6. Write the report to ${{ runner.temp }}/task-test-report.md, in the issue's
+               language, as markdown in exactly this shape:
+
+               ## Test raporu — #N
+               **Olay:** issues | pull_request · **Komut:** `<test command>`
+
+               | # | Kriter | Test | Sonuç | Nasıl test edildi |
+               |---|--------|------|-------|-------------------|
+
+               **Sonuç:** X/Y geçti.
+               **Notlar:** anything untestable here and why (one line each).
+
+            Do not post comments or push branches yourself; the workflow does that.
+
+      - name: Push new tests to test/issue-N
+        if: steps.issue.outputs.skip != 'true'
+        env:
+          N: ${{ steps.issue.outputs.number }}
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then echo "no test changes"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "test/issue-$N"
+          git commit -m "test: acceptance tests for #$N"
+          git push -f origin "test/issue-$N"
+          printf '\n_Yeni testler `test/issue-%s` dalında._\n' "$N" >> "$REPORT"
+
+      - name: Post the report on the issue and PR
+        if: always() && steps.issue.outputs.skip != 'true'
+        env:
+          N: ${{ steps.issue.outputs.number }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ ! -s "$REPORT" ]; then
+            printf '## Test raporu — #%s\n\nRapor üretilemedi; workflow loguna bakın.\n' "$N" > "$REPORT"
+          fi
+          gh issue comment "$N" --body-file "$REPORT"
+          if [ -n "$PR" ]; then gh pr comment "$PR" --body-file "$REPORT"; fi
+
+      - name: Send the report to Task Manager
+        if: always() && steps.issue.outputs.skip != 'true' && vars.TASK_MANAGER_URL != ''
+        env:
+          N: ${{ steps.issue.outputs.number }}
+          TASK_MANAGER_URL: ${{ vars.TASK_MANAGER_URL }}
+          REPORT_TOKEN: ${{ secrets.TASK_MANAGER_REPORT_SECRET }}
+        run: |
+          set -euo pipefail
+          jq -n --arg repo "$GITHUB_REPOSITORY" --argjson n "$N" --rawfile body "$REPORT" \
+            '{repo: $repo, issue_number: $n, body: $body}' \
+          | curl -sSf -X POST "${TASK_MANAGER_URL%/}/integrations/github/test-report" \
+              -H "Content-Type: application/json" -H "X-Report-Token: $REPORT_TOKEN" \
+              --data-binary @-

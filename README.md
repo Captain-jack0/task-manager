@@ -115,7 +115,7 @@ Coverage target: **≥ 80%** on both sides.
 
 Total cost: **$0/mo, no credit card required**. Trade-off: backend cold-starts after ~15 min of idle.
 
-#### 1. Postgres → Neon (always free, 0.5 GB)
+#### 1. Postgres → Neon (free: 1 GB storage, 100 compute-hours and 5 GB network transfer per project per month)
 1. Sign up at https://console.neon.tech (GitHub login).
 2. Create a project, region close to you (e.g. Frankfurt).
 3. Copy the **pooled** connection string. Convert it to async format:
@@ -139,6 +139,29 @@ Total cost: **$0/mo, no credit card required**. Trade-off: backend cold-starts a
 4. Deploy.
 5. Once Vercel gives you the URL, go back to Render dashboard → update `FRONTEND_URL` env var → Render redeploys automatically (CORS).
 
+#### 4. Attachments → object storage (keeps Neon's transfer quota safe)
+Without this, attachment bytes live in Postgres and **every download is a full copy out of Neon**, which eats the
+5 GB/month network-transfer allowance fast. Point the API at a bucket (Cloudflare R2, Google Cloud Storage
+interoperability mode, AWS S3 — any S3-compatible store) in the Render dashboard:
+
+```
+S3_BUCKET=<bucket>
+S3_ENDPOINT_URL=https://storage.googleapis.com     # or https://<account-id>.r2.cloudflarestorage.com
+S3_REGION=auto
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+```
+
+New uploads go straight to the bucket. Move the files that were uploaded before, once, from your machine
+(same env vars plus the production `DATABASE_URL`):
+
+```bash
+cd backend && python -m app.scripts.move_attachments_to_storage
+```
+
+It is safe to rerun; afterwards run `VACUUM FULL attachments;` in Neon's SQL editor to hand the space back.
+`ATTACHMENT_QUOTA_MB` (default 4096) caps the total so the bucket stays inside its free tier.
+
 ### Paid alternative: Fly.io (no cold starts, ~$4/mo)
 
 ```bash
@@ -148,6 +171,46 @@ fly postgres create --name task-manager-db
 fly postgres attach task-manager-db
 fly secrets set JWT_SECRET=<random> FRONTEND_URL=https://<vercel>.vercel.app
 fly deploy
+```
+
+## Task test automation (any repo)
+
+[`.github/workflows/task-test.yml`](.github/workflows/task-test.yml) turns a task
+into a test run in any project, with no per-project test config. When an issue gets
+the `test` label, or a PR that references one is opened/updated, Claude
+Code reads the issue, works out how that repo runs its tests, writes or finds one
+test per acceptance criterion, runs them and posts a report (criterion → test →
+result → how it was tested) on the issue, on the PR and as a comment on the linked
+task here. New tests are pushed to `test/issue-N`. A task's issue opens in the repo
+linked to its project (set when creating or importing a project), or in the account's
+default repo; the GitHub token must have Issues: write on each of them. Task Manager
+applies the label: turn on **Auto-test** on a project (sidebar, hover its name) to
+label every issue it opens, or press **Test** on a linked task to run on demand.
+
+Enable it in another repo with one file, `.github/workflows/task-test.yml`:
+
+```yaml
+name: task-test
+on:
+  issues: { types: [labeled] }
+  pull_request: { types: [opened, synchronize, reopened] }
+permissions: { contents: write, issues: write, pull-requests: write }
+jobs:
+  test:
+    uses: Captain-jack0/task-manager/.github/workflows/task-test.yml@dev
+    secrets: inherit
+```
+
+Each repo needs two secrets and one variable. The app shows them, filled in, under
+the account menu → GitHub integration → "Set up test automation" once GitHub is
+connected: the report secret is per user and minted there. No Anthropic API key?
+On a Claude Pro/Max plan run `claude setup-token` locally and store the result as
+`CLAUDE_CODE_OAUTH_TOKEN` instead of `ANTHROPIC_API_KEY`:
+
+```bash
+gh secret set ANTHROPIC_API_KEY -R owner/repo
+gh secret set TASK_MANAGER_REPORT_SECRET -R owner/repo
+gh variable set TASK_MANAGER_URL -R owner/repo -b https://your-api.example.com
 ```
 
 ## License

@@ -58,6 +58,10 @@ export interface Project {
   workspace_id: string;
   name: string;
   color: string | null;
+  /** owner/repo its tasks open issues in; null = the account's default repo. */
+  github_repo: string | null;
+  /** Label every issue this project opens so its repo's task-test workflow runs. */
+  auto_test: boolean;
   created_at: string;
 }
 
@@ -74,7 +78,11 @@ export interface Comment {
 export interface ProjectCreateInput {
   name: string;
   color?: string | null;
+  github_repo?: string | null;
+  auto_test?: boolean;
 }
+
+export type ProjectUpdateInput = Partial<ProjectCreateInput>;
 
 export interface Sprint {
   id: string;
@@ -187,6 +195,8 @@ export interface Task {
 export interface GithubStatus {
   connected: boolean;
   repo: string | null;
+  /** Secret for the task-test workflow; null until GitHub is connected. */
+  report_token: string | null;
 }
 
 export interface GithubRepo {

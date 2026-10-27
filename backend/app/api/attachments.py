@@ -1,12 +1,13 @@
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from app.api.access import require_task
 from app.api.deps import CurrentUser, SessionDep
 from app.config import get_settings
+from app.core.rate_limit import limiter
 from app.models.attachment import MAX_ATTACHMENT_BYTES, Attachment
 from app.models.workspace import WorkspaceRole
 from app.repositories import activity_repo, attachment_repo, workspace_repo
@@ -66,8 +67,13 @@ async def list_attachments(
     response_model=AttachmentOut,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("10/minute")
 async def upload_attachment(
-    task_id: UUID, file: UploadFile, current_user: CurrentUser, session: SessionDep
+    request: Request,
+    task_id: UUID,
+    file: UploadFile,
+    current_user: CurrentUser,
+    session: SessionDep,
 ) -> AttachmentOut:
     await require_task(session, current_user, task_id, write=True)
     limit = _max_bytes()
@@ -112,8 +118,9 @@ async def upload_attachment(
 
 
 @router.get("/attachments/{attachment_id}/download")
+@limiter.limit("30/minute")  # bounds bucket egress: 30 x 25 MB per IP per minute at most
 async def download_attachment(
-    attachment_id: UUID, current_user: CurrentUser, session: SessionDep
+    request: Request, attachment_id: UUID, current_user: CurrentUser, session: SessionDep
 ) -> Response:
     att = await attachment_repo.get(session, attachment_id=attachment_id, with_data=True)
     if att is None:

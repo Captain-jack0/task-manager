@@ -3,12 +3,22 @@
 Uses the user's personal access token to verify repo access and create issues.
 Network/permission problems are mapped to clean 400/502 HTTPExceptions.
 """
+import re
 from typing import Any
 
 import httpx
 from fastapi import HTTPException, status
 
 GITHUB_API = "https://api.github.com"
+# Applying this label is what starts the repo's task-test workflow.
+TEST_LABEL = "test"
+_ISSUE_URL_RE = re.compile(r"^https://github[.]com/([^/]+/[^/]+)/issues/[0-9]+$")
+
+
+def repo_from_issue_url(url: str) -> str | None:
+    """owner/repo from an issue html_url, or None if it is not one."""
+    match = _ISSUE_URL_RE.match(url)
+    return match.group(1) if match else None
 
 
 def _headers(token: str) -> dict[str, str]:
@@ -56,6 +66,37 @@ async def create_issue(token: str, repo: str, *, title: str, body: str) -> dict[
         status_code=status.HTTP_400_BAD_REQUEST,
         detail=f"GitHub returned an unexpected status ({resp.status_code})",
     )
+
+
+async def add_test_label(token: str, repo: str, number: int) -> None:
+    """Apply the `test` label to an issue so the repo's task-test workflow runs.
+
+    The label is created if the repo lacks it and removed first if already set,
+    so GitHub fires a fresh `labeled` event either way.
+    """
+    labels = f"{GITHUB_API}/repos/{repo}/issues/{number}/labels"
+    async with httpx.AsyncClient(timeout=10) as client:
+        try:
+            await client.post(  # 422 when it already exists, which is fine
+                f"{GITHUB_API}/repos/{repo}/labels",
+                headers=_headers(token),
+                json={"name": TEST_LABEL, "color": "0e8a16", "description": "Run task tests"},
+            )
+            # 404 when the label is not on the issue, which is fine too
+            await client.delete(f"{labels}/{TEST_LABEL}", headers=_headers(token))
+            resp = await client.post(
+                labels, headers=_headers(token), json={"labels": [TEST_LABEL]}
+            )
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY, detail="Could not reach GitHub"
+            ) from exc
+    if resp.status_code != 200:
+        _raise_for_access(resp.status_code)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"GitHub returned an unexpected status ({resp.status_code})",
+        )
 
 
 async def get_issue_state(token: str, repo: str, number: int) -> str:

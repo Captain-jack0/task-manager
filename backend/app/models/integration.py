@@ -24,3 +24,6 @@ class GithubIntegration(Base, UUIDMixin, TimestampMixin):
     )
     repo: Mapped[str] = mapped_column(String(140), nullable=False)  # "owner/repo"
     token: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Per-user secret the task-test GitHub workflow sends back with its report
+    # (X-Report-Token). Encrypted like the PAT; shown to its owner in Settings.
+    report_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
