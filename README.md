@@ -181,7 +181,9 @@ the `test` label, or a PR that references one is opened/updated, Claude
 Code reads the issue, works out how that repo runs its tests, writes or finds one
 test per acceptance criterion, runs them and posts a report (criterion → test →
 result → how it was tested) on the issue, on the PR and as a comment on the linked
-task here. New tests are pushed to `test/issue-N`. A task's issue opens in the repo
+task here. New tests are pushed to `test/issue-N` and opened as a PR (into the PR
+under test, else the default branch; this needs "Allow GitHub Actions to create and
+approve pull requests" in the repo's Settings → Actions → General). A task's issue opens in the repo
 linked to its project (set when creating or importing a project), or in the account's
 default repo; the GitHub token must have Issues: write on each of them. Task Manager
 applies the label: turn on **Auto-test** on a project (sidebar, hover its name) to
