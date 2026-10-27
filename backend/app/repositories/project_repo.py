@@ -24,9 +24,21 @@ async def get(session: AsyncSession, *, project_id: UUID) -> Project | None:
 
 
 async def create(
-    session: AsyncSession, *, workspace_id: UUID, name: str, color: str | None
+    session: AsyncSession,
+    *,
+    workspace_id: UUID,
+    name: str,
+    color: str | None,
+    github_repo: str | None = None,
+    auto_test: bool = False,
 ) -> Project:
-    project = Project(workspace_id=workspace_id, name=name, color=color)
+    project = Project(
+        workspace_id=workspace_id,
+        name=name,
+        color=color,
+        github_repo=github_repo,
+        auto_test=auto_test,
+    )
     session.add(project)
     await session.commit()
     await session.refresh(project)

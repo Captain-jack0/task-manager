@@ -1,9 +1,10 @@
+import secrets
 from uuid import UUID
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.crypto import encrypt_secret
+from app.core.crypto import decrypt_secret, encrypt_secret
 from app.models.integration import GithubIntegration
 
 
@@ -22,7 +23,9 @@ async def upsert_github(
     encrypted = encrypt_secret(token)
     integration = await get_github(session, user_id=user_id)
     if integration is None:
-        integration = GithubIntegration(user_id=user_id, token=encrypted, repo=repo)
+        integration = GithubIntegration(
+            user_id=user_id, token=encrypted, repo=repo, report_token=_new_report_token()
+        )
         session.add(integration)
     else:
         integration.token = encrypted
@@ -37,3 +40,15 @@ async def delete_github(session: AsyncSession, *, user_id: UUID) -> None:
         delete(GithubIntegration).where(GithubIntegration.user_id == user_id)
     )
     await session.commit()
+
+
+def _new_report_token() -> str:
+    return encrypt_secret(secrets.token_urlsafe(32))
+
+
+async def ensure_report_token(session: AsyncSession, integration: GithubIntegration) -> str:
+    """Plaintext report token, minting one if the row predates test automation."""
+    if integration.report_token is None:
+        integration.report_token = _new_report_token()
+        await session.commit()
+    return decrypt_secret(integration.report_token)
