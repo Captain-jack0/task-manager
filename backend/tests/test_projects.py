@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from httpx import AsyncClient
 
 
@@ -53,3 +54,39 @@ async def test_guest_is_read_only(
         f"/projects?workspace_id={wid}", json={"name": "x"}, headers=second_auth_headers
     )
     assert wproj.status_code == 403
+
+
+async def test_project_repo_must_be_visible_to_the_github_token(
+    client: AsyncClient, auth_headers: dict[str, str], monkeypatch
+) -> None:
+    # No GitHub connection yet: linking a repo is refused up front.
+    resp = await client.post(
+        "/projects", json={"name": "Web", "github_repo": "octocat/hello"}, headers=auth_headers
+    )
+    assert resp.status_code == 400
+
+    async def fake_verify(token: str, repo: str) -> None:
+        if repo != "octocat/hello":
+            raise HTTPException(status_code=400, detail="Repository not found")
+
+    monkeypatch.setattr("app.services.github.verify_repo", fake_verify)
+    await client.put(
+        "/integrations/github",
+        json={"token": "ghp_xxxxxxxxxx", "repo": "octocat/hello"},
+        headers=auth_headers,
+    )
+    ok = await client.post(
+        "/projects",
+        json={"name": "Web", "github_repo": "https://github.com/octocat/hello"},
+        headers=auth_headers,
+    )
+    assert ok.status_code == 201 and ok.json()["github_repo"] == "octocat/hello"
+
+    denied = await client.put(
+        f"/projects/{ok.json()['id']}", json={"github_repo": "octocat/private"}, headers=auth_headers
+    )
+    assert denied.status_code == 400
+    cleared = await client.put(
+        f"/projects/{ok.json()['id']}", json={"github_repo": ""}, headers=auth_headers
+    )
+    assert cleared.status_code == 200 and cleared.json()["github_repo"] is None

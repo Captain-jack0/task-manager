@@ -28,6 +28,7 @@ import {
   useDeleteTask,
   useSyncGithubIssue,
   useTask,
+  useTestGithubIssue,
   useUpdateTask,
 } from './useTasks';
 
@@ -46,6 +47,7 @@ export function TaskDetailPage() {
   const deleteMutation = useDeleteTask();
   const createIssue = useCreateGithubIssue();
   const syncIssue = useSyncGithubIssue();
+  const testIssue = useTestGithubIssue();
   const { data: github } = useGithubStatus();
   const { data: projects } = useProjects(taskQuery.data?.workspace_id);
   const { data: sprints } = useSprints(taskQuery.data?.workspace_id);
@@ -132,6 +134,14 @@ export function TaskDetailPage() {
           t.status === 'done' ? 'Issue closed → moved to Done (Test)' : 'Issue still open',
         ),
       onError: (err) => toast.error(extractErrorMessage(err, 'Could not sync issue')),
+    });
+  };
+
+  const handleTestIssue = () => {
+    testIssue.mutate(task.id, {
+      onSuccess: () =>
+        toast.success('Test started on GitHub — the report will arrive as a comment'),
+      onError: (err) => toast.error(extractErrorMessage(err, 'Could not start the test')),
     });
   };
 
@@ -280,6 +290,15 @@ export function TaskDetailPage() {
                   title="If the issue is closed on GitHub, move this task to Done"
                 >
                   Sync
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleTestIssue}
+                  isLoading={testIssue.isPending}
+                  title="Run the repo's task-test workflow on this issue; the report lands here as a comment"
+                >
+                  Test
                 </Button>
               </>
             ) : github?.connected ? (
