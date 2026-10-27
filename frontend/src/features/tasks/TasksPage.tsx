@@ -142,8 +142,12 @@ export function TasksPage() {
   const handleCreateProject = () => {
     const name = window.prompt('Project name');
     if (!name?.trim()) return;
+    const repo = window.prompt(
+      'GitHub repository for its issues (owner/repo) — leave empty to use your default repo',
+      '',
+    );
     createProject.mutate(
-      { name: name.trim() },
+      { name: name.trim(), github_repo: repo?.trim() || null },
       {
         onSuccess: (p) => {
           toast.success(`Project "${p.name}" created`);
@@ -179,7 +183,8 @@ export function TasksPage() {
     if (names.length === 0) return;
     try {
       for (const name of names) {
-        await createProject.mutateAsync({ name });
+        const full = (githubRepos ?? []).find((r) => r.name === name)?.full_name ?? null;
+        await createProject.mutateAsync({ name, github_repo: full });
       }
       toast.success(`Imported ${names.length} project${names.length === 1 ? '' : 's'}`);
       setSelectedRepos(new Set());
@@ -443,6 +448,7 @@ export function TasksPage() {
                     type="button"
                     onClick={() => setProjectFilter(p.id === projectFilter ? undefined : p.id)}
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    title={p.github_repo ? `Issues open in ${p.github_repo}` : undefined}
                   >
                     <span
                       className="h-2 w-2 shrink-0 rounded-full"

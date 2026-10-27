@@ -7,6 +7,21 @@ from pydantic import BaseModel, Field, field_validator
 _REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+")
 
 
+def normalise_repo(v: str) -> str:
+    """Accept "owner/repo", a pasted https/ssh URL, or a trailing ".git"/slash,
+    and return the bare "owner/repo"; reject anything else."""
+    v = v.strip()
+    v = re.sub(r"^https?://github\.com/", "", v, flags=re.IGNORECASE)
+    v = re.sub(r"^git@github\.com:", "", v, flags=re.IGNORECASE)
+    v = v.removesuffix(".git").strip("/")
+    if not _REPO_RE.fullmatch(v):
+        raise ValueError("repo must be in the form owner/repo")
+    # Reject "." / ".." segments so the repo can't normalise the request path.
+    if any(seg in (".", "..") for seg in v.split("/")):
+        raise ValueError("repo must be in the form owner/repo")
+    return v
+
+
 class GithubConnectRequest(BaseModel):
     token: str = Field(min_length=10, max_length=255)
     repo: str = Field(min_length=3, max_length=140)
@@ -19,25 +34,29 @@ class GithubConnectRequest(BaseModel):
     @field_validator("repo")
     @classmethod
     def validate_repo(cls, v: str) -> str:
-        v = v.strip()
-        # Be forgiving: accept a pasted repo URL (https or ssh) or a trailing
-        # ".git"/slash and normalise down to "owner/repo" before validating.
-        v = re.sub(r"^https?://github\.com/", "", v, flags=re.IGNORECASE)
-        v = re.sub(r"^git@github\.com:", "", v, flags=re.IGNORECASE)
-        v = v.removesuffix(".git").strip("/")
-        if not _REPO_RE.fullmatch(v):
-            raise ValueError("repo must be in the form owner/repo")
-        # Reject "." / ".." segments so the repo can't normalise the request path.
-        if any(seg in (".", "..") for seg in v.split("/")):
-            raise ValueError("repo must be in the form owner/repo")
-        return v
+        return normalise_repo(v)
 
 
 class GithubStatusOut(BaseModel):
     connected: bool
     repo: str | None = None
+    # Secret for the task-test workflow (TASK_MANAGER_REPORT_SECRET on the repo).
+    report_token: str | None = None
 
 
 class GithubRepoOut(BaseModel):
     name: str
     full_name: str
+
+
+class GithubTestReportIn(BaseModel):
+    """A test report from the task-test workflow, addressed by GitHub issue."""
+
+    repo: str = Field(min_length=3, max_length=140)
+    issue_number: int = Field(ge=1)
+    body: str = Field(min_length=1, max_length=20_000)
+
+    @field_validator("repo")
+    @classmethod
+    def validate_repo(cls, v: str) -> str:
+        return normalise_repo(v)

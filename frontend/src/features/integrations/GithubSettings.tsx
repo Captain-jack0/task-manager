@@ -3,7 +3,10 @@ import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Modal } from '@/components/Modal';
-import { extractErrorMessage } from '@/api/client';
+import { baseURL, extractErrorMessage } from '@/api/client';
+import { useProjects } from '@/features/projects/useProjects';
+import { useWorkspaceStore } from '@/features/workspaces/workspaceStore';
+import { TestAutomationGuide } from './TestAutomationGuide';
 import { useConnectGithub, useDisconnectGithub, useGithubStatus } from './useGithub';
 
 interface Props {
@@ -20,6 +23,12 @@ export function GithubSettings({ open, onClose }: Props) {
   const disconnect = useDisconnectGithub();
 
   const connected = status?.connected ?? false;
+  const workspaceId = useWorkspaceStore((s) => s.currentWorkspaceId) ?? undefined;
+  const { data: projects } = useProjects(workspaceId);
+  // Every repo issues can land in: the default plus each project's own.
+  const repos = [status?.repo, ...(projects ?? []).map((p) => p.github_repo)].filter(
+    (r): r is string => Boolean(r),
+  );
 
   const handleConnect = () => {
     if (!token.trim() || !repo.trim()) return;
@@ -51,8 +60,18 @@ export function GithubSettings({ open, onClose }: Props) {
           <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               Connected to <span className="font-medium">{status?.repo}</span>. Open any task as
-              an issue from its detail page.
+              an issue from its detail page: it lands in the repo linked to the task's project,
+              or in this default repo. The token must have{' '}
+              <span className="font-medium">Issues: write</span> on every one of those repos —
+              linking a project to a repo the token cannot see is refused.
             </p>
+            {status?.report_token && (
+              <TestAutomationGuide
+                repos={repos}
+                reportToken={status.report_token}
+                apiBaseUrl={baseURL}
+              />
+            )}
             <Button variant="danger" onClick={handleDisconnect} isLoading={disconnect.isPending}>
               Disconnect
             </Button>
@@ -61,8 +80,9 @@ export function GithubSettings({ open, onClose }: Props) {
           <div className="space-y-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Paste a GitHub personal access token with <span className="font-medium">Issues:
-              write</span> access to the repo, plus the target repository. The token is stored
-              only on the server and never shown again.
+              write</span> access to the repo, plus the default repository. Grant the same
+              access on any repo you later link to a project — issues for that project's
+              tasks open there. The token is stored only on the server and never shown again.
             </p>
             <a
               href="https://github.com/settings/personal-access-tokens"

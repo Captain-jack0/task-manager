@@ -389,9 +389,15 @@ async def create_github_issue(
             detail="Connect GitHub first (Settings → GitHub)",
         )
 
+    # Tasks in a project linked to a repo open there; the rest use the default.
+    repo = integration.repo
+    if task.project_id is not None:
+        project = await project_repo.get(session, project_id=task.project_id)
+        if project is not None and project.github_repo:
+            repo = project.github_repo
     result = await github.create_issue(
         decrypt_secret(integration.token),
-        integration.repo,
+        repo,
         title=task.title,
         body=task.description or "",
     )
@@ -419,8 +425,9 @@ async def sync_github_issue(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Connect GitHub first"
         )
 
+    repo = github.repo_from_issue_url(task.github_issue_url or "") or integration.repo
     state = await github.get_issue_state(
-        decrypt_secret(integration.token), integration.repo, task.github_issue_number
+        decrypt_secret(integration.token), repo, task.github_issue_number
     )
     if state == "closed" and task.status not in (TaskStatus.DONE, TaskStatus.CLOSED):
         task.status = TaskStatus.DONE

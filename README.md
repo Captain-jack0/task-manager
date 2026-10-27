@@ -173,6 +173,44 @@ fly secrets set JWT_SECRET=<random> FRONTEND_URL=https://<vercel>.vercel.app
 fly deploy
 ```
 
+## Task test automation (any repo)
+
+[`.github/workflows/task-test.yml`](.github/workflows/task-test.yml) turns a task
+into a test run in any project, with no per-project test config. When an issue is
+opened (or labelled `test`), or a PR that references one is opened/updated, Claude
+Code reads the issue, works out how that repo runs its tests, writes or finds one
+test per acceptance criterion, runs them and posts a report (criterion → test →
+result → how it was tested) on the issue, on the PR and as a comment on the linked
+task here. New tests are pushed to `test/issue-N`. A task's issue opens in the repo
+linked to its project (set when creating or importing a project), or in the account's
+default repo; the GitHub token must have Issues: write on each of them.
+
+Enable it in another repo with one file, `.github/workflows/task-test.yml`:
+
+```yaml
+name: task-test
+on:
+  issues: { types: [opened, labeled] }
+  pull_request: { types: [opened, synchronize, reopened] }
+permissions: { contents: write, issues: write, pull-requests: write }
+jobs:
+  test:
+    uses: Captain-jack0/task-manager/.github/workflows/task-test.yml@dev
+    secrets: inherit
+```
+
+Each repo needs two secrets and one variable. The app shows them, filled in, under
+the account menu → GitHub integration → "Set up test automation" once GitHub is
+connected: the report secret is per user and minted there. No Anthropic API key?
+On a Claude Pro/Max plan run `claude setup-token` locally and store the result as
+`CLAUDE_CODE_OAUTH_TOKEN` instead of `ANTHROPIC_API_KEY`:
+
+```bash
+gh secret set ANTHROPIC_API_KEY -R owner/repo
+gh secret set TASK_MANAGER_REPORT_SECRET -R owner/repo
+gh variable set TASK_MANAGER_URL -R owner/repo -b https://your-api.example.com
+```
+
 ## License
 
 MIT

@@ -3,12 +3,20 @@
 Uses the user's personal access token to verify repo access and create issues.
 Network/permission problems are mapped to clean 400/502 HTTPExceptions.
 """
+import re
 from typing import Any
 
 import httpx
 from fastapi import HTTPException, status
 
 GITHUB_API = "https://api.github.com"
+_ISSUE_URL_RE = re.compile(r"^https://github[.]com/([^/]+/[^/]+)/issues/[0-9]+$")
+
+
+def repo_from_issue_url(url: str) -> str | None:
+    """owner/repo from an issue html_url, or None if it is not one."""
+    match = _ISSUE_URL_RE.match(url)
+    return match.group(1) if match else None
 
 
 def _headers(token: str) -> dict[str, str]:

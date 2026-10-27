@@ -5,10 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.access import _ensure_not_guest, resolve_workspace
 from app.api.deps import CurrentUser, SessionDep
+from app.core.crypto import decrypt_secret
 from app.models.project import Project
 from app.models.user import User
-from app.repositories import project_repo, workspace_repo
+from app.repositories import integration_repo, project_repo, workspace_repo
 from app.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
+from app.services import github
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -24,6 +26,18 @@ async def _require_project(
     if write:
         await _ensure_not_guest(session, workspace_id=project.workspace_id, user_id=user.id)
     return project
+
+
+async def _check_repo_access(session: AsyncSession, user: User, repo: str) -> None:
+    """A project's repo must be visible to the user's GitHub token now, or opening
+    issues for its tasks would fail later with a confusing error."""
+    integration = await integration_repo.get_github(session, user_id=user.id)
+    if integration is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Connect GitHub first (account menu → GitHub integration)",
+        )
+    await github.verify_repo(decrypt_secret(integration.token), repo)
 
 
 @router.get("", response_model=list[ProjectOut])
@@ -45,8 +59,14 @@ async def create_project(
     workspace_id: UUID | None = None,
 ) -> ProjectOut:
     ws_id = await resolve_workspace(session, current_user, workspace_id, write=True)
+    if payload.github_repo:
+        await _check_repo_access(session, current_user, payload.github_repo)
     project = await project_repo.create(
-        session, workspace_id=ws_id, name=payload.name, color=payload.color
+        session,
+        workspace_id=ws_id,
+        name=payload.name,
+        color=payload.color,
+        github_repo=payload.github_repo,
     )
     return ProjectOut.model_validate(project)
 
@@ -60,6 +80,8 @@ async def update_project(
 ) -> ProjectOut:
     project = await _require_project(session, current_user, project_id, write=True)
     data = payload.model_dump(exclude_unset=True)
+    if data.get("github_repo"):
+        await _check_repo_access(session, current_user, data["github_repo"])
     for key, value in data.items():
         setattr(project, key, value)
     updated = await project_repo.update(session, project=project)

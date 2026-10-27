@@ -19,3 +19,6 @@ class Project(Base, UUIDMixin, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    # GitHub repo (owner/repo) this project's tasks open issues in; NULL falls
+    # back to the user's default repo from their GitHub integration.
+    github_repo: Mapped[str | None] = mapped_column(String(140), nullable=True)
