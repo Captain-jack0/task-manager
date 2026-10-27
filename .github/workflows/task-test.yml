@@ -38,12 +38,16 @@ jobs:
       cancel-in-progress: true
     env:
       GH_TOKEN: ${{ github.token }}
-      REPORT: ${{ runner.temp }}/task-test-report.md
-      ISSUE_FILE: ${{ runner.temp }}/issue.md
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # `runner` is a step-only context, so the scratch paths are set here
+      - name: Scratch file paths
+        run: |
+          echo "REPORT=$RUNNER_TEMP/task-test-report.md" >> "$GITHUB_ENV"
+          echo "ISSUE_FILE=$RUNNER_TEMP/issue.md" >> "$GITHUB_ENV"
 
       - name: Resolve the linked issue
         id: issue
