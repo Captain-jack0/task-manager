@@ -52,6 +52,7 @@ jobs:
         run: |
           echo "REPORT=$RUNNER_TEMP/task-test-report.md" >> "$GITHUB_ENV"
           echo "ISSUE_FILE=$RUNNER_TEMP/issue.md" >> "$GITHUB_ENV"
+          echo "FINDINGS=$RUNNER_TEMP/task-test-findings.json" >> "$GITHUB_ENV"
 
       - name: Resolve the linked issue
         id: issue
@@ -116,6 +117,11 @@ jobs:
                **Sonuç:** X/Y geçti.
                **Notlar:** anything untestable here and why (one line each).
 
+            7. Also write ${{ runner.temp }}/task-test-findings.json: a JSON array with one
+               object per criterion that failed or could not be tested, shaped as
+               {"criterion": "...", "test": "<test name, or empty>", "reason": "<one line>"}.
+               Write [] when everything passed.
+
             Do not post comments or push branches yourself; the workflow does that.
 
       - name: Push new tests to test/issue-N and open a PR for them
@@ -161,8 +167,14 @@ jobs:
           REPORT_TOKEN: ${{ secrets.TASK_MANAGER_REPORT_SECRET }}
         run: |
           set -euo pipefail
-          jq -n --arg repo "$GITHUB_REPOSITORY" --argjson n "$N" --rawfile body "$REPORT" \
-            '{repo: $repo, issue_number: $n, body: $body}' \
+          # Failed/untestable criteria ride along in a hidden block at the end of the
+          # report; the task page lists them with an "Add as subtask" button each.
+          findings=''
+          if [ -s "$FINDINGS" ] && jq -e 'type == "array"' "$FINDINGS" >/dev/null 2>&1; then
+            findings=$(jq -c '[.[] | {criterion: ((.criterion // "") | tostring), test: ((.test // "") | tostring), reason: ((.reason // "") | tostring)}]' "$FINDINGS")
+          fi
+          jq -n --arg repo "$GITHUB_REPOSITORY" --argjson n "$N" --rawfile body "$REPORT" --arg findings "$findings" \
+            '{repo: $repo, issue_number: $n, body: (if $findings == "" then $body else $body + "\n\n<!-- task-test-findings " + $findings + " -->" end)}' \
           | curl -sSf -X POST "${TASK_MANAGER_URL%/}/integrations/github/test-report" \
               -H "Content-Type: application/json" -H "X-Report-Token: $REPORT_TOKEN" \
               --data-binary @-

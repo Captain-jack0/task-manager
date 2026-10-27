@@ -188,6 +188,8 @@ linked to its project (set when creating or importing a project), or in the acco
 default repo; the GitHub token must have Issues: write on each of them. Task Manager
 applies the label: turn on **Auto-test** on a project (sidebar, hover its name) to
 label every issue it opens, or press **Test** on a linked task to run on demand.
+Criteria that failed or could not be tested show up under the report on the task,
+each with an "Add as subtask" button; nothing is created without that click.
 
 Enable it in another repo with one file, `.github/workflows/task-test.yml`:
 

@@ -339,7 +339,7 @@ export function TaskDetailPage() {
             </div>
           </div>
 
-          <CommentsSection taskId={task.id} members={members ?? []} />
+          <CommentsSection task={task} members={members ?? []} />
         </article>
       )}
     </div>
