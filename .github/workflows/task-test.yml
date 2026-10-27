@@ -5,7 +5,8 @@
 # Claude Code reads the issue, works out how THIS repo runs its
 # tests, writes or finds one test per acceptance criterion, runs them and posts
 # a report (criterion → test → result → how it was tested) on the issue, on the
-# PR and on the linked Task Manager task. New tests land on `test/issue-N`.
+# PR and on the linked Task Manager task. New tests land on `test/issue-N`, with
+# a PR into the PR under test (or the default branch) so they can be reviewed.
 #
 # Reuse from any repo (README → "Task test automation"):
 #   jobs:
@@ -30,8 +31,11 @@ permissions:
 
 jobs:
   test:
-    # issues: only when the `test` label is applied (re-apply it to re-run)
-    if: github.event_name != 'issues' || github.event.label.name == 'test'
+    # issues: only when the `test` label is applied (re-apply it to re-run).
+    # Never on the test/issue-N branches this workflow pushes itself.
+    if: >-
+      (github.event_name != 'issues' || github.event.label.name == 'test')
+      && !startsWith(github.head_ref, 'test/issue-')
     runs-on: ubuntu-latest
     concurrency:
       group: task-test-${{ github.event.issue.number || github.event.pull_request.number }}
@@ -114,10 +118,11 @@ jobs:
 
             Do not post comments or push branches yourself; the workflow does that.
 
-      - name: Push new tests to test/issue-N
+      - name: Push new tests to test/issue-N and open a PR for them
         if: steps.issue.outputs.skip != 'true'
         env:
           N: ${{ steps.issue.outputs.number }}
+          PR_HEAD: ${{ github.head_ref }}
         run: |
           set -euo pipefail
           git add -A
@@ -127,7 +132,13 @@ jobs:
           git checkout -B "test/issue-$N"
           git commit -m "test: acceptance tests for #$N"
           git push -f origin "test/issue-$N"
-          printf '\n_Yeni testler `test/issue-%s` dalında._\n' "$N" >> "$REPORT"
+          # One PR per issue, into the PR under test or else the default branch. Needs
+          # "Allow GitHub Actions to create and approve pull requests" (repo Settings →
+          # Actions → General); without it only the branch is reported.
+          if ! url=$(gh pr view "test/issue-$N" --json url -q .url 2>/dev/null); then
+            url=$(gh pr create --head "test/issue-$N" ${PR_HEAD:+--base "$PR_HEAD"} --title "test: acceptance tests for #$N" --body "Acceptance tests for #$N, written by the task-test workflow. The report is on the issue." || true)
+          fi
+          printf '\n_Yeni testler: %s_\n' "${url:-test/issue-$N dalında}" >> "$REPORT"
 
       - name: Post the report on the issue and PR
         if: always() && steps.issue.outputs.skip != 'true'
