@@ -75,14 +75,15 @@ describe('TestFindings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add as subtask' }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    const [firstArg, secondArg] = create.mock.calls[0] as [unknown, unknown];
-    expect(firstArg).toMatchObject({
-      title: FINDING.criterion,
-      description: 'Test: test_empty_title\n\n422 yerine 500 döndü',
-      parent_id: 't1',
-      project_id: 'p1',
-    });
-    expect(secondArg).toBe('w1');
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: FINDING.criterion,
+        description: 'Test: test_empty_title\n\n422 yerine 500 döndü',
+        parent_id: 't1',
+        project_id: 'p1',
+      }),
+      'w1'
+    );
   });
 
   it('says so when every criterion passed', () => {
