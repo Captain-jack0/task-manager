@@ -5,7 +5,10 @@ import { Button } from '@/components/Button';
 import { extractErrorMessage } from '@/api/client';
 import { useAuthStore } from '@/features/auth/authStore';
 import { formatDate } from '@/lib/date';
-import type { Member } from '@/types/api';
+import { MarkdownView } from '@/components/MarkdownView';
+import type { Member, Task } from '@/types/api';
+import { TestFindings } from './TestFindings';
+import { isTestReport, latestFindings, stripFindings } from './testReport';
 import { useComments, useCreateComment, useDeleteComment } from './useComments';
 
 function renderBody(body: string): ReactNode[] {
@@ -22,14 +25,17 @@ function renderBody(body: string): ReactNode[] {
 }
 
 interface Props {
-  taskId: string;
+  task: Task;
   members: Member[];
 }
 
-export function CommentsSection({ taskId, members }: Props) {
+export function CommentsSection({ task, members }: Props) {
+  const taskId = task.id;
   const [body, setBody] = useState('');
   const currentUser = useAuthStore((s) => s.user);
   const { data: comments } = useComments(taskId);
+  // Only the newest test report offers its findings; older runs are history.
+  const latest = latestFindings(comments ?? []);
   const createComment = useCreateComment(taskId);
   const deleteComment = useDeleteComment(taskId);
 
@@ -70,9 +76,14 @@ export function CommentsSection({ taskId, members }: Props) {
                   </button>
                 )}
               </div>
-              <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-700 dark:text-slate-300">
-                {renderBody(c.body)}
-              </p>
+              {isTestReport(c.body) ? (
+                <MarkdownView text={stripFindings(c.body)} className="mt-0.5" />
+              ) : (
+                <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-700 dark:text-slate-300">
+                  {renderBody(c.body)}
+                </p>
+              )}
+              {latest?.commentId === c.id && <TestFindings task={task} findings={latest.findings} />}
             </div>
           </div>
         ))}

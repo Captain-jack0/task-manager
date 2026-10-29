@@ -3,6 +3,8 @@ export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEnergy = 'low' | 'medium' | 'high';
 export type TaskRecurrence = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'guest';
+export type TestRunStatus = 'running' | 'passed' | 'failed' | 'error';
+export type TestTriggerSource = 'manual' | 'auto' | 'pr' | 'issue';
 export type TaskSortField =
   | 'created_at'
   | 'updated_at'
@@ -434,4 +436,49 @@ export interface TaskListFilters {
   order?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+}
+
+// Test Runs
+export interface TestFinding {
+  criterion: string;
+  test: string | null;
+  reason: string;
+}
+
+export interface TestRun {
+  id: string;
+  project_id: string;
+  task_id: string | null;
+  status: TestRunStatus;
+  trigger_source: TestTriggerSource;
+  github_run_id: string | null;
+  github_run_url: string | null;
+  total_criteria: number;
+  passed_criteria: number;
+  failed_criteria: number;
+  test_command: string | null;
+  report_body: string | null;
+  findings: { findings: TestFinding[] } | null;
+  duration_seconds: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TestRunSummary {
+  total_runs: number;
+  latest_status: TestRunStatus | null;
+  latest_run_id: string | null;
+  latest_created_at: string | null;
+  last_30_days: {
+    passed: number;
+    failed: number;
+    error: number;
+  };
+}
+
+export interface TriggerTestsInput {
+  project_id: string;
+  task_id?: string | null;
 }

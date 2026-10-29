@@ -56,6 +56,7 @@ async def list_tasks(
     has_due_date: bool | None = None,
     max_minutes: int | None = None,
     search: str | None = None,
+    github_issue_number: int | None = None,
     sort: str = "created_at",
     order: str = "asc",
     page: int = 1,
@@ -95,6 +96,8 @@ async def list_tasks(
         conditions.append(Task.due_date.is_(None))
     if max_minutes is not None:
         conditions.append(Task.estimated_minutes <= max_minutes)
+    if github_issue_number is not None:
+        conditions.append(Task.github_issue_number == github_issue_number)
     if search:
         like = f"%{search}%"
         conditions.append(or_(Task.title.ilike(like), Task.description.ilike(like)))
