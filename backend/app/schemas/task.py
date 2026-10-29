@@ -70,6 +70,7 @@ class TaskRef(BaseModel):
     id: UUID
     title: str
     status: TaskStatus
+    github_issue_number: int | None = None
 
 
 class TaskParentRef(BaseModel):

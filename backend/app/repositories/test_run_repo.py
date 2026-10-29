@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import desc, func, select
@@ -88,7 +89,7 @@ async def complete(
     failed_criteria: int = 0,
     test_command: str | None = None,
     report_body: str | None = None,
-    findings: dict | None = None,
+    findings: dict[str, Any] | None = None,
     duration_seconds: int | None = None,
 ) -> TestRun:
     """Mark a test run as complete and update its results."""
@@ -116,7 +117,7 @@ async def count_by_project(session: AsyncSession, *, project_id: UUID) -> int:
 
 async def get_project_summary(
     session: AsyncSession, *, project_id: UUID
-) -> dict:
+) -> dict[str, Any]:
     """Get test run summary for a project (total, passed, failed, latest status)."""
     # Total runs
     total = await count_by_project(session, project_id=project_id)
@@ -154,7 +155,7 @@ async def get_project_summary(
 
 async def get_multi_project_summary(
     session: AsyncSession, *, project_ids: list[UUID]
-) -> dict[UUID, dict]:
+) -> dict[UUID, dict[str, Any]]:
     """Get test run summaries for multiple projects (for dashboard)."""
     summaries = {}
     for project_id in project_ids:

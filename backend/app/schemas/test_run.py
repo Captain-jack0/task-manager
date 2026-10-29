@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -52,7 +53,7 @@ class TestRunOut(BaseModel):
     failed_criteria: int = 0
     test_command: str | None = None
     report_body: str | None = None
-    findings: dict | None = None
+    findings: dict[str, Any] | None = None
     duration_seconds: int | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None

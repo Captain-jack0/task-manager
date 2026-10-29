@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
@@ -145,11 +146,17 @@ async def trigger_tests(
 async def get_dashboard(
     current_user: CurrentUser,
     session: SessionDep,
-) -> dict[str, dict]:
+) -> dict[str, dict[str, Any]]:
     """Get test run summaries for all projects the user has access to."""
-    # Get all projects in user's workspaces
-    projects = await project_repo.list_by_user(session, user_id=current_user.id)
-    project_ids = [p.id for p in projects]
+    # Get all workspaces for user
+    from app.repositories import workspace_repo
+    workspaces = await workspace_repo.list_for_user(session, user_id=current_user.id)
+
+    # Get all projects in those workspaces
+    project_ids: list[UUID] = []
+    for workspace in workspaces:
+        projects = await project_repo.list_by_workspace(session, workspace_id=workspace.id)
+        project_ids.extend([p.id for p in projects])
 
     # Get summaries for all projects
     summaries = await test_run_repo.get_multi_project_summary(

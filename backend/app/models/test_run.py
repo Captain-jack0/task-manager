@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
@@ -73,7 +74,7 @@ class TestRun(Base, UUIDMixin, TimestampMixin):
     test_command: Mapped[str | None] = mapped_column(String(500), nullable=True)
     report_body: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Failed/untestable criteria as JSON: [{criterion, test, reason}]
-    findings: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    findings: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # When the test started and finished
     started_at: Mapped[datetime | None] = mapped_column(

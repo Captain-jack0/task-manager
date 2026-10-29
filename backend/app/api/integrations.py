@@ -2,7 +2,7 @@ import hmac
 import json
 import re
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request, status
 
@@ -58,7 +58,7 @@ def _parse_test_results(report_body: str) -> tuple[int, int, str | None]:
     return passed, total, test_command
 
 
-def _extract_findings(report_body: str) -> list[dict] | None:
+def _extract_findings(report_body: str) -> list[dict[str, Any]] | None:
     """Extract test findings from hidden JSON block in report.
 
     Format: <!-- task-test-findings [...] -->
