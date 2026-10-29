@@ -8,8 +8,8 @@ backend_dir = Path(__file__).parent
 sys.path.insert(0, str(backend_dir))
 
 try:
-    from alembic.config import Config
     from alembic import command
+    from alembic.config import Config
 
     # Create Alembic config
     alembic_cfg = Config(str(backend_dir / "alembic.ini"))
@@ -20,7 +20,7 @@ try:
     print("✓ Migration completed successfully!")
 
 except ImportError as e:
-    print(f"Error: alembic not installed. Run: pip install alembic", file=sys.stderr)
+    print("Error: alembic not installed. Run: pip install alembic", file=sys.stderr)
     print(f"Details: {e}", file=sys.stderr)
     sys.exit(1)
 except Exception as e:

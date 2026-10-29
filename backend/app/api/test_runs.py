@@ -105,8 +105,8 @@ async def trigger_tests(
     related_issues: list[int] = []
     blocked_by_issues: list[int] = []
     if payload.task_id:
-        from app.repositories import task_repo
         from app.api.tasks import _out
+        from app.repositories import task_repo
 
         task = await task_repo.get_task(session, task_id=payload.task_id)
         if task:

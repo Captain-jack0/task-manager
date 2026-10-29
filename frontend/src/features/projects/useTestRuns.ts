@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { testRunsApi } from '@/api/testRuns';
-import type { TestRun, TestRunSummary, TriggerTestsInput } from '@/types/api';
+import type { TriggerTestsInput } from '@/types/api';
 
 export const TEST_RUNS_QUERY_KEY = 'testRuns';
 

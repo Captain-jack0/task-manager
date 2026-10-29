@@ -190,7 +190,7 @@ function TestRunDetails({ run }: TestRunDetailsProps) {
 interface FindingCardProps {
   finding: {
     criterion: string;
-    test: string;
+    test: string | null;
     reason: string;
   };
   index: number;
@@ -213,7 +213,9 @@ function FindingCard({ finding, index }: FindingCardProps) {
 
           <div>
             <p className="text-xs font-medium text-red-900 dark:text-red-100">Test</p>
-            <p className="mt-0.5 text-sm text-red-800 dark:text-red-200">{finding.test}</p>
+            <p className="mt-0.5 text-sm text-red-800 dark:text-red-200">
+              {finding.test ?? '—'}
+            </p>
           </div>
 
           <div>

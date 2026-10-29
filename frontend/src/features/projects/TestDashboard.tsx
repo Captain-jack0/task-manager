@@ -72,7 +72,7 @@ export function TestDashboard({ workspaceId }: TestDashboardProps) {
 
         const hasTests = summary.total_runs > 0;
         const passRate = hasTests
-          ? Math.round((summary.passed_count / summary.total_runs) * 100)
+          ? Math.round((summary.last_30_days.passed / summary.total_runs) * 100)
           : 0;
 
         return (
@@ -111,14 +111,14 @@ export function TestDashboard({ workspaceId }: TestDashboardProps) {
                   Passed
                 </p>
                 <p className="mt-1 text-lg font-semibold text-green-600 dark:text-green-400">
-                  {summary.passed_count}
+                  {summary.last_30_days.passed}
                 </p>
               </div>
 
               <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-900/20">
                 <p className="text-xs font-medium text-red-900 dark:text-red-100">Failed</p>
                 <p className="mt-1 text-lg font-semibold text-red-600 dark:text-red-400">
-                  {summary.failed_count}
+                  {summary.last_30_days.failed}
                 </p>
               </div>
             </div>
@@ -151,7 +151,7 @@ export function TestDashboard({ workspaceId }: TestDashboardProps) {
             )}
 
             {/* Latest run */}
-            {summary.latest_run && (
+            {summary.latest_status && summary.latest_created_at && (
               <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-800">
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   Latest Run
@@ -160,29 +160,17 @@ export function TestDashboard({ workspaceId }: TestDashboardProps) {
                   <span
                     className={cn(
                       'h-2 w-2 rounded-full',
-                      STATUS_DOT[summary.latest_run.status as TestRunStatus],
+                      STATUS_DOT[summary.latest_status as TestRunStatus],
                     )}
                   />
                   <span className="text-sm text-slate-700 dark:text-slate-300">
-                    {STATUS_LABEL[summary.latest_run.status as TestRunStatus]}
+                    {STATUS_LABEL[summary.latest_status as TestRunStatus]}
                   </span>
                   <span className="text-xs text-slate-400">•</span>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {formatDate(summary.latest_run.created_at)}
+                    {formatDate(summary.latest_created_at)}
                   </span>
                 </div>
-                {summary.latest_run.status === 'passed' && (
-                  <p className="mt-1 text-xs text-green-600 dark:text-green-400">
-                    {summary.latest_run.passed_criteria} of{' '}
-                    {summary.latest_run.total_criteria} criteria met
-                  </p>
-                )}
-                {summary.latest_run.status === 'failed' && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {summary.latest_run.failed_criteria} of{' '}
-                    {summary.latest_run.total_criteria} criteria failed
-                  </p>
-                )}
               </div>
             )}
 
