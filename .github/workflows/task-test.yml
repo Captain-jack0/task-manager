@@ -67,6 +67,8 @@ jobs:
           PR_BRANCH: ${{ github.head_ref }}
           DISPATCH_TASK_ID: ${{ github.event.client_payload.task_id }}
           PROJECT_ID: ${{ github.event.client_payload.project_id }}
+          TASK_MANAGER_URL: ${{ vars.TASK_MANAGER_URL }}
+          REPORT_TOKEN: ${{ secrets.TASK_MANAGER_REPORT_SECRET }}
         run: |
           set -euo pipefail
           if [ "$EVENT" = "issues" ]; then
@@ -76,8 +78,25 @@ jobs:
             echo "mode=project" >> "$GITHUB_OUTPUT"
             echo "project_id=$PROJECT_ID" >> "$GITHUB_OUTPUT"
             echo "task_id=$DISPATCH_TASK_ID" >> "$GITHUB_OUTPUT"
-            # Create a generic test context file
+
+            # Extract relationships from client_payload
+            related="${{ github.event.client_payload.related_issues }}"
+            blocked_by="${{ github.event.client_payload.blocked_by_issues }}"
+
+            # Create test context with relationships
             printf '# General Project Tests\n\nRunning automated test suite for the project.\n' > "$ISSUE_FILE"
+            if [ -n "$related" ] || [ -n "$blocked_by" ]; then
+              printf '\n## Related Tasks\n' >> "$ISSUE_FILE"
+              if [ -n "$related" ]; then
+                # Convert JSON array [1,2,3] to comma-separated string
+                related_nums=$(echo "$related" | jq -r '.[]' 2>/dev/null | paste -sd, - || echo '')
+                [ -n "$related_nums" ] && printf 'Related: #%s\n' "${related_nums//,/, #}" >> "$ISSUE_FILE"
+              fi
+              if [ -n "$blocked_by" ]; then
+                blocked_nums=$(echo "$blocked_by" | jq -r '.[]' 2>/dev/null | paste -sd, - || echo '')
+                [ -n "$blocked_nums" ] && printf 'Blocked by: #%s\n' "${blocked_nums//,/, #}" >> "$ISSUE_FILE"
+              fi
+            fi
             exit 0
           else
             # "#12" / "closes #12" in the PR body, else an "issue-12" branch name
@@ -93,6 +112,24 @@ jobs:
           echo "mode=issue" >> "$GITHUB_OUTPUT"
           gh issue view "$n" --json title,body \
             --jq '"# " + .title + "\n\n" + (.body // "")' > "$ISSUE_FILE"
+
+          # Try to fetch task relationships from Task Manager for this issue
+          if [ -n "$TASK_MANAGER_URL" ]; then
+            # Find task by GitHub issue number
+            task_data=$(curl -sSf "${TASK_MANAGER_URL%/}/api/tasks?github_issue_number=$n&limit=1" \
+              -H "X-Report-Token: $REPORT_TOKEN" 2>/dev/null | jq -r '.tasks[0] // {}' || echo '{}')
+
+            # Extract relationships
+            related=$(echo "$task_data" | jq -r '.related[]?.github_issue_number // empty' 2>/dev/null | paste -sd, - || echo '')
+            blocked_by=$(echo "$task_data" | jq -r '.blocked_by[]?.github_issue_number // empty' 2>/dev/null | paste -sd, - || echo '')
+
+            # Append relationships to issue file
+            if [ -n "$related" ] || [ -n "$blocked_by" ]; then
+              printf '\n## Related Tasks\n' >> "$ISSUE_FILE"
+              [ -n "$related" ] && printf 'Related: #%s\n' "${related//,/, #}" >> "$ISSUE_FILE"
+              [ -n "$blocked_by" ] && printf 'Blocked by: #%s\n' "${blocked_by//,/, #}" >> "$ISSUE_FILE"
+            fi
+          fi
 
       - name: Write and run tests for the task
         if: steps.issue.outputs.skip != 'true'
@@ -111,28 +148,51 @@ jobs:
                manifests (package.json, pyproject.toml, go.mod, Cargo.toml, ...), README and
                CLAUDE.md/AGENTS.md. Install what the suite needs. No database service is
                available here: prefer unit-level tests or the project's own in-memory path.
+
             2. Extract the acceptance criteria from the issue as a numbered list. If the issue
                states none, derive them from its title and description.
+
             3. For each criterion, find an existing test that covers it or write a new one
                following the project's test conventions (same framework, folder and naming).
                Run it and record the command, pass/fail and what it checks.
-            4. On an `issues` event the work is probably not implemented yet: failing tests are
-               expected and prove the criterion is testable. On a `pull_request` event every
-               criterion should pass; also run the full existing suite and report its result.
-            5. Only add or change test files. Never touch application code, CI files or secrets.
-            6. Write the report to ${{ runner.temp }}/task-test-report.md, in the issue's
+
+            4. Check if the issue file lists "Related Tasks" or "Blocked by" sections. If it does,
+               for EACH referenced issue number (e.g., #45, #67), find and run the tests that
+               cover those tasks. Report their status separately in the "İlişkili Testler" section.
+               Only test tasks that THIS task depends on (blocked_by), NOT tasks that depend on
+               this task.
+
+            5. ALWAYS run the full existing test suite for this repository (all tests, not just
+               the ones for this task). Record the overall pass/fail count and duration. On an
+               `issues` event the task work is probably not implemented yet: failing task-specific
+               tests are expected. On a `pull_request` event, all tests should pass.
+
+            6. Only add or change test files. Never touch application code, CI files or secrets.
+
+            7. Write the report to ${{ runner.temp }}/task-test-report.md, in the issue's
                language, as markdown in exactly this shape:
 
                ## Test raporu — #N
-               **Olay:** issues | pull_request · **Komut:** `<test command>`
+               **Olay:** issues | pull_request | repository_dispatch
+               **Test Komutu:** `<test command for this task>`
+               **Tam Test Paketi:** `<full suite command>` — X/Y geçti (Z saniye)
 
+               ### Bu Task'ın Testleri
                | # | Kriter | Test | Sonuç | Nasıl test edildi |
                |---|--------|------|-------|-------------------|
 
                **Sonuç:** X/Y geçti.
+
+               ### İlişkili Testler
+               (Only if Related or Blocked by tasks exist)
+               | Task | Test Sayısı | Sonuç | Durum |
+               |------|-------------|-------|-------|
+               | #45  | 5           | 5/5   | ✅ Geçti |
+               | #67  | 3           | 2/3   | ⚠️ Başarısız |
+
                **Notlar:** anything untestable here and why (one line each).
 
-            7. Also write ${{ runner.temp }}/task-test-findings.json: a JSON array with one
+            8. Also write ${{ runner.temp }}/task-test-findings.json: a JSON array with one
                object per criterion that failed or could not be tested, shaped as
                {"criterion": "...", "test": "<test name, or empty>", "reason": "<one line>"}.
                Write [] when everything passed.

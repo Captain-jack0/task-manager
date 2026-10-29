@@ -101,11 +101,30 @@ async def trigger_tests(
             detail="No GitHub repo configured for this project or user",
         )
 
+    # Fetch task relationships if task_id is provided
+    related_issues: list[int] = []
+    blocked_by_issues: list[int] = []
+    if payload.task_id:
+        from app.repositories import task_repo
+        from app.api.tasks import _out
+
+        task = await task_repo.get_task(session, task_id=payload.task_id)
+        if task:
+            task_out = await _out(session, task)
+            related_issues = [
+                r.github_issue_number for r in task_out.related if r.github_issue_number
+            ]
+            blocked_by_issues = [
+                b.github_issue_number for b in task_out.blocked_by if b.github_issue_number
+            ]
+
     # Trigger GitHub Actions workflow via repository_dispatch
     client_payload = {
         "project_id": str(project_id),
         "task_id": str(payload.task_id) if payload.task_id else None,
         "trigger_source": "manual",
+        "related_issues": related_issues,
+        "blocked_by_issues": blocked_by_issues,
     }
 
     await github.trigger_repository_dispatch(
