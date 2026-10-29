@@ -150,11 +150,11 @@ async def get_dashboard(
     """Get test run summaries for all projects the user has access to."""
     # Get all workspaces for user
     from app.repositories import workspace_repo
-    workspaces = await workspace_repo.list_for_user(session, user_id=current_user.id)
+    workspace_roles = await workspace_repo.list_for_user(session, user_id=current_user.id)
 
     # Get all projects in those workspaces
     project_ids: list[UUID] = []
-    for workspace in workspaces:
+    for workspace, _ in workspace_roles:
         projects = await project_repo.list_by_workspace(session, workspace_id=workspace.id)
         project_ids.extend([p.id for p in projects])
 
