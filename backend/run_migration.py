@@ -8,8 +8,9 @@ backend_dir = Path(__file__).parent
 sys.path.insert(0, str(backend_dir))
 
 try:
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     # Create Alembic config
     alembic_cfg = Config(str(backend_dir / "alembic.ini"))
