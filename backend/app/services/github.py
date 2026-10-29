@@ -141,6 +141,47 @@ async def list_repos(token: str) -> list[dict[str, Any]]:
     return [{"name": r["name"], "full_name": r["full_name"]} for r in resp.json()]
 
 
+async def trigger_repository_dispatch(
+    token: str,
+    repo: str,
+    *,
+    event_type: str = "test-run",
+    client_payload: dict[str, Any] | None = None,
+) -> None:
+    """Trigger a repository_dispatch event to run GitHub Actions workflow.
+
+    This sends a custom event that can be caught by workflows with:
+    on:
+      repository_dispatch:
+        types: [test-run]
+    """
+    async with httpx.AsyncClient(timeout=10) as client:
+        try:
+            resp = await client.post(
+                f"{GITHUB_API}/repos/{repo}/dispatches",
+                headers=_headers(token),
+                json={
+                    "event_type": event_type,
+                    "client_payload": client_payload or {},
+                },
+            )
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Could not reach GitHub"
+            ) from exc
+
+    if resp.status_code == 204:
+        # Success (no content response)
+        return
+
+    _raise_for_access(resp.status_code)
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=f"GitHub returned an unexpected status ({resp.status_code})",
+    )
+
+
 def _raise_for_access(code: int) -> None:
     if code in (401, 403):
         raise HTTPException(

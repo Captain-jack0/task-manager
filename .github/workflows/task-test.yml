@@ -23,6 +23,8 @@ on:
     types: [labeled]
   pull_request:
     types: [opened, synchronize, reopened]
+  repository_dispatch:
+    types: [test-run]
 
 permissions:
   contents: write
@@ -33,12 +35,14 @@ jobs:
   test:
     # issues: only when the `test` label is applied (re-apply it to re-run).
     # Never on the test/issue-N branches this workflow pushes itself.
+    # repository_dispatch: triggered manually via the Task Manager "Run Tests" button.
     if: >-
       (github.event_name != 'issues' || github.event.label.name == 'test')
       && !startsWith(github.head_ref, 'test/issue-')
+      || github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
     concurrency:
-      group: task-test-${{ github.event.issue.number || github.event.pull_request.number }}
+      group: task-test-${{ github.event.issue.number || github.event.pull_request.number || github.event.client_payload.task_id || 'dispatch' }}
       cancel-in-progress: true
     env:
       GH_TOKEN: ${{ github.token }}
@@ -54,17 +58,27 @@ jobs:
           echo "ISSUE_FILE=$RUNNER_TEMP/issue.md" >> "$GITHUB_ENV"
           echo "FINDINGS=$RUNNER_TEMP/task-test-findings.json" >> "$GITHUB_ENV"
 
-      - name: Resolve the linked issue
+      - name: Resolve the linked issue or test context
         id: issue
         env:
           EVENT: ${{ github.event_name }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_BRANCH: ${{ github.head_ref }}
+          DISPATCH_TASK_ID: ${{ github.event.client_payload.task_id }}
+          PROJECT_ID: ${{ github.event.client_payload.project_id }}
         run: |
           set -euo pipefail
           if [ "$EVENT" = "issues" ]; then
             n="$ISSUE_NUMBER"
+          elif [ "$EVENT" = "repository_dispatch" ]; then
+            # For manual test runs via repository_dispatch, run general project tests
+            echo "mode=project" >> "$GITHUB_OUTPUT"
+            echo "project_id=$PROJECT_ID" >> "$GITHUB_OUTPUT"
+            echo "task_id=$DISPATCH_TASK_ID" >> "$GITHUB_OUTPUT"
+            # Create a generic test context file
+            printf '# General Project Tests\n\nRunning automated test suite for the project.\n' > "$ISSUE_FILE"
+            exit 0
           else
             # "#12" / "closes #12" in the PR body, else an "issue-12" branch name
             n=$(printf '%s\n%s\n' "$PR_BODY" "$PR_BRANCH" \
@@ -76,6 +90,7 @@ jobs:
             exit 0
           fi
           echo "number=$n" >> "$GITHUB_OUTPUT"
+          echo "mode=issue" >> "$GITHUB_OUTPUT"
           gh issue view "$n" --json title,body \
             --jq '"# " + .title + "\n\n" + (.body // "")' > "$ISSUE_FILE"
 

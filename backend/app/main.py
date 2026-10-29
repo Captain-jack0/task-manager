@@ -20,6 +20,7 @@ from app.api import (
     sprints,
     tags,
     tasks,
+    test_runs,
     time,
     workspaces,
 )
@@ -71,6 +72,8 @@ def create_app() -> FastAPI:
     app.include_router(comments.router)
     app.include_router(tags.router)
     app.include_router(integrations.router)
+    app.include_router(test_runs.router)
+    app.include_router(test_runs.dashboard_router)
     app.include_router(calendar.router)
     app.include_router(notifications.router)
     app.include_router(activity.router)

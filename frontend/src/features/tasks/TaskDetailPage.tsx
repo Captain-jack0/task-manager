@@ -31,6 +31,7 @@ import {
   useTestGithubIssue,
   useUpdateTask,
 } from './useTasks';
+import { useTriggerTests } from '@/features/projects/useTestRuns';
 
 const PRIORITY_DOT: Record<'low' | 'medium' | 'high', string> = {
   low: 'bg-slate-400',
@@ -48,6 +49,7 @@ export function TaskDetailPage() {
   const createIssue = useCreateGithubIssue();
   const syncIssue = useSyncGithubIssue();
   const testIssue = useTestGithubIssue();
+  const triggerTests = useTriggerTests();
   const { data: github } = useGithubStatus();
   const { data: projects } = useProjects(taskQuery.data?.workspace_id);
   const { data: sprints } = useSprints(taskQuery.data?.workspace_id);
@@ -143,6 +145,31 @@ export function TaskDetailPage() {
         toast.success('Test started on GitHub — the report will arrive as a comment'),
       onError: (err) => toast.error(extractErrorMessage(err, 'Could not start the test')),
     });
+  };
+
+  const handleRunTests = () => {
+    if (!task.project_id) {
+      toast.error('Task must belong to a project to run tests');
+      return;
+    }
+
+    triggerTests.mutate(
+      {
+        projectId: task.project_id,
+        input: {
+          project_id: task.project_id,
+          task_id: task.id,
+        },
+      },
+      {
+        onSuccess: (data) => {
+          toast.success(`Tests triggered on ${data.repo}. Results will appear in test history.`);
+        },
+        onError: (err) => {
+          toast.error(extractErrorMessage(err, 'Could not trigger tests'));
+        },
+      },
+    );
   };
 
   return (
@@ -300,6 +327,17 @@ export function TaskDetailPage() {
                 >
                   Test
                 </Button>
+                {task.project_id && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleRunTests}
+                    isLoading={triggerTests.isPending}
+                    title="Manually trigger tests for this project via repository_dispatch"
+                  >
+                    Run Tests
+                  </Button>
+                )}
               </>
             ) : github?.connected ? (
               <Button
