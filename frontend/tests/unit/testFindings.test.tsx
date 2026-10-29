@@ -20,7 +20,9 @@ const FINDING = {
 const BODY = `${REPORT}\n\n<!-- task-test-findings ${JSON.stringify([FINDING])} -->`;
 const ALL_PASSED = `${REPORT}\n\n<!-- task-test-findings [] -->`;
 
-const { create } = vi.hoisted(() => ({ create: vi.fn(async () => ({})) }));
+const { create } = vi.hoisted(() => ({
+  create: vi.fn(async () => ({}))
+}));
 vi.mock('@/api/tasks', () => ({
   tasksApi: {
     list: vi.fn(
@@ -30,7 +32,7 @@ vi.mock('@/api/tasks', () => ({
           total: 1,
         }) as unknown as TaskListResponse,
     ),
-    create: (...args: unknown[]) => create(...args),
+    create,
   },
 }));
 
@@ -73,13 +75,14 @@ describe('TestFindings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add as subtask' }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    expect(create.mock.calls[0][0]).toMatchObject({
+    const [firstArg, secondArg] = create.mock.calls[0] as [unknown, unknown];
+    expect(firstArg).toMatchObject({
       title: FINDING.criterion,
       description: 'Test: test_empty_title\n\n422 yerine 500 döndü',
       parent_id: 't1',
       project_id: 'p1',
     });
-    expect(create.mock.calls[0][1]).toBe('w1');
+    expect(secondArg).toBe('w1');
   });
 
   it('says so when every criterion passed', () => {
